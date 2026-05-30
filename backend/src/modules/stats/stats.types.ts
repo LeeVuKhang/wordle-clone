@@ -12,6 +12,17 @@ export interface PlayerStatsDTO {
     currentStreak: number;
     maxStreak: number;
     guessDistribution: Record<string, number>;
+    completedDailyGames: CompletedDailyGameDTO[];
+}
+
+export interface CompletedDailyGameDTO {
+    id: string;
+    gameDate: string;
+    completedAt: string | null;
+    status: 'WON' | 'LOST';
+    attempts: number;
+    targetWord: string;
+    guesses: string[];
 }
 
 export interface LeaderboardEntryDTO {

@@ -38,7 +38,7 @@ function withRefreshWindow(entries: LeaderboardEntryDTO[]): LeaderboardResponseD
 }
 
 export async function getPlayerStats(userId: string): Promise<PlayerStatsDTO> {
-    const [gamesPlayed, gamesWon, user, groupedWins] = await Promise.all([
+    const [gamesPlayed, gamesWon, user, groupedWins, completedGames] = await Promise.all([
         prisma.dailyGame.count({ where: { userId } }),
         prisma.dailyGame.count({ where: { userId, status: 'WON' } }),
         prisma.user.findUnique({
@@ -49,6 +49,27 @@ export async function getPlayerStats(userId: string): Promise<PlayerStatsDTO> {
             by: ['attempts'],
             where: { userId, status: 'WON' },
             _count: { _all: true },
+        }),
+        prisma.dailyGame.findMany({
+            where: {
+                userId,
+                status: { in: ['WON', 'LOST'] },
+            },
+            orderBy: { gameDate: 'desc' },
+            select: {
+                id: true,
+                gameDate: true,
+                completedAt: true,
+                status: true,
+                attempts: true,
+                dailyWord: {
+                    select: { word: true },
+                },
+                guesses: {
+                    orderBy: { attemptNumber: 'asc' },
+                    select: { guessWord: true },
+                },
+            },
         }),
     ]);
 
@@ -70,6 +91,15 @@ export async function getPlayerStats(userId: string): Promise<PlayerStatsDTO> {
         currentStreak: user.currentStreak,
         maxStreak: user.maxStreak,
         guessDistribution,
+        completedDailyGames: completedGames.map((game) => ({
+            id: game.id,
+            gameDate: game.gameDate.toISOString(),
+            completedAt: game.completedAt?.toISOString() ?? null,
+            status: game.status as 'WON' | 'LOST',
+            attempts: game.attempts,
+            targetWord: game.dailyWord.word,
+            guesses: game.guesses.map((guess) => guess.guessWord),
+        })),
     };
 }
 

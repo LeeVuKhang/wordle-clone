@@ -1,3 +1,5 @@
+import { compareWord } from './compareWord.js';
+
 function toNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -12,15 +14,95 @@ function pluralize(value, singular, plural = `${singular}s`) {
   return value === 1 ? singular : plural;
 }
 
-function gamesWonFromStats(stats) {
-  const explicitGamesWon = toNumber(stats?.gamesWon);
-  if (stats && Object.prototype.hasOwnProperty.call(stats, 'gamesWon')) {
-    return explicitGamesWon;
+function formatBadgeDate(value) {
+  if (!value) return 'Earned';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Earned';
+
+  return date.toISOString().slice(0, 10);
+}
+
+function completedDailyGamesFromStats(stats) {
+  if (Array.isArray(stats?.completedDailyGames)) {
+    return stats.completedDailyGames;
   }
 
-  const gamesPlayed = toNumber(stats?.gamesPlayed);
-  const winPercentage = toNumber(stats?.winPercentage);
-  return Math.round((gamesPlayed * winPercentage) / 100);
+  if (Array.isArray(stats?.dailyGames)) {
+    return stats.dailyGames;
+  }
+
+  return [];
+}
+
+function getGameResults(game) {
+  if (Array.isArray(game?.guessResults)) {
+    return game.guessResults;
+  }
+
+  const guesses = Array.isArray(game?.guesses) ? game.guesses : [];
+  const targetWord = game?.targetWord || game?.word || game?.answer;
+  if (!targetWord || guesses.length === 0) return [];
+
+  return guesses.map((guess) => compareWord(guess, targetWord));
+}
+
+function isYellowStatus(status) {
+  return status === 'present' ||
+    status === 'yellow' ||
+    status === 'Y' ||
+    status === '\uD83D\uDFE8';
+}
+
+function isNonYellowTile(status) {
+  return status === 'correct' ||
+    status === 'green' ||
+    status === 'G' ||
+    status === '\uD83D\uDFE9' ||
+    status === 'absent' ||
+    status === 'gray' ||
+    status === 'grey' ||
+    status === 'B' ||
+    status === '\u2B1B';
+}
+
+function isCompletedGame(game) {
+  return game?.status === 'WON' || game?.status === 'LOST' || Boolean(game?.completedAt);
+}
+
+function isSeaOfGreensGame(game) {
+  if (!isCompletedGame(game)) return false;
+
+  const results = getGameResults(game);
+  if (results.length === 0) return false;
+
+  return results.every((row) => (
+    Array.isArray(row) &&
+    row.length > 0 &&
+    row.every((cell) => {
+      const status = typeof cell === 'string' ? cell : cell?.status;
+      return !isYellowStatus(status) && isNonYellowTile(status);
+    })
+  ));
+}
+
+function seaOfGreensBadge(stats) {
+  const earnedGame = completedDailyGamesFromStats(stats).find(isSeaOfGreensGame);
+  const isEarned = Boolean(earnedGame);
+
+  return {
+    id: 'sea-of-greens',
+    name: 'Sea of Greens',
+    description: 'Complete a daily puzzle with zero yellow tiles.',
+    icon: 'G',
+    isEarned,
+    progress: isEarned ? 100 : 0,
+    progressText: isEarned ? '1/1 no-yellow game' : '0/1 no-yellow games',
+    statusText: isEarned
+      ? formatBadgeDate(earnedGame.completedAt || earnedGame.gameDate)
+      : '0/1',
+    earnedAt: earnedGame?.completedAt || earnedGame?.gameDate,
+  };
 }
 
 function milestoneBadge({
@@ -51,23 +133,12 @@ function milestoneBadge({
 
 export function computeBadges(stats) {
   const gamesPlayed = toNumber(stats?.gamesPlayed);
-  const gamesWon = gamesWonFromStats(stats);
   const currentStreak = toNumber(stats?.currentStreak);
   const maxStreak = toNumber(stats?.maxStreak);
   const firstGuessWins = toNumber(stats?.guessDistribution?.['1']);
 
   const badges = [
-    milestoneBadge({
-      id: 'sea-of-greens',
-      name: 'Sea of Greens',
-      description: 'Win 10 daily puzzles to fill your board with green.',
-      icon: '10',
-      value: gamesWon,
-      bestValue: gamesWon,
-      milestone: 10,
-      unit: 'win',
-      earnedText: `${gamesWon} ${pluralize(gamesWon, 'win')}`,
-    }),
+    seaOfGreensBadge(stats),
     {
       id: 'wordle-in-1',
       name: 'Wordle In 1',
