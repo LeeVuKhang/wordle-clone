@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 
 import Header    from './components/Header';
 import GameBoard from './components/GameBoard';
@@ -29,6 +29,27 @@ initSyncRetryService();
  * If the current URL contains ?code=..., we are on the OAuth redirect-back page.
  * Extract the code and return it (cleared from the URL), otherwise return null.
  */
+const DAILY_WIN_MESSAGES = [
+  'Genius',
+  'Magnificent',
+  'Impressive',
+  'Splendid',
+  'Great',
+  'Phew',
+];
+
+function getDailyCompletionMessage(gameStatus, attempts) {
+  if (gameStatus === 'WON') {
+    return DAILY_WIN_MESSAGES[Math.max(0, Math.min(5, Number(attempts || 1) - 1))];
+  }
+
+  if (gameStatus === 'LOST') {
+    return 'Nice try';
+  }
+
+  return null;
+}
+
 function consumeOAuthCode() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get('code');
@@ -49,7 +70,11 @@ function App() {
   const [showResultsPanel, setShowResultsPanel] = useState(false);
   const [mergeResult, setMergeResult] = useState(null);
   const [modalDismissed, setModalDismissed] = useState(false);
+  const [completionStatsSnapshot, setCompletionStatsSnapshot] = useState(null);
   const [shouldRefreshMergedState, setShouldRefreshMergedState] = useState(false);
+  const latestStatsRef = useRef(null);
+  const previousDailyStatusRef = useRef('PLAYING');
+  const previousDailyLoadingRef = useRef(true);
 
   const auth     = useAuth();
   const daily    = useGame();
@@ -64,6 +89,10 @@ function App() {
   // Active game depends on mode
   const game = mode === 'daily' ? daily : practice;
   const dailyGameDate = new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    latestStatsRef.current = stats;
+  }, [stats]);
 
   // ── Handle OAuth redirect-back ─────────────────────────────────────────
   useEffect(() => {
@@ -119,6 +148,44 @@ function App() {
   useEffect(() => {
     if (game.gameStatus === 'PLAYING') setModalDismissed(false);
   }, [game.gameStatus]);
+
+  useEffect(() => {
+    if (daily.gameStatus === 'PLAYING') {
+      setCompletionStatsSnapshot(null);
+    }
+  }, [daily.gameStatus]);
+
+  useEffect(() => {
+    const wasDailyPlaying = previousDailyStatusRef.current === 'PLAYING';
+    const wasDailyLoaded = previousDailyLoadingRef.current === false;
+    const isDailyGameOver = daily.gameStatus === 'WON' || daily.gameStatus === 'LOST';
+
+    previousDailyStatusRef.current = daily.gameStatus;
+    previousDailyLoadingRef.current = daily.isLoading;
+
+    if (
+      mode !== 'daily' ||
+      daily.isLoading ||
+      !wasDailyLoaded ||
+      !wasDailyPlaying ||
+      !isDailyGameOver
+    ) {
+      return undefined;
+    }
+
+    const message = getDailyCompletionMessage(daily.gameStatus, daily.attempts);
+    setCompletionStatsSnapshot(latestStatsRef.current);
+
+    if (message) {
+      daily.showToast(message, 'success');
+    }
+
+    const timer = window.setTimeout(() => {
+      setShowResultsPanel(true);
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [daily.attempts, daily.gameStatus, daily.isLoading, daily.showToast, mode, showResultsPanel]);
 
   useEffect(() => {
     if (mode !== 'daily' || !auth.user || !isGameOver) return undefined;
@@ -249,7 +316,11 @@ function App() {
             stats={stats}
             isStatsLoading={isStatsLoading}
             statsError={statsError}
+            previousStats={completionStatsSnapshot}
+            gameId={daily.gameId}
             guessResults={game.guessResults}
+            submittedWords={daily.submittedWords}
+            targetWord={daily.targetWord}
             gameDate={dailyGameDate}
             onToast={game.showToast}
           />

@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { ArrowLeft, Trophy, X } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
+import { computeDailyBadgeCallouts } from '../utils/badges.js';
 import './ResultsPanel.css';
 
 function formatWinPercentage(value) {
@@ -22,10 +24,38 @@ const ResultsPanel = ({
   stats,
   isStatsLoading,
   statsError,
+  previousStats,
+  gameId,
   guessResults,
+  submittedWords,
+  targetWord,
   gameDate,
   onToast,
 }) => {
+  const earnedDailyBadges = useMemo(() => computeDailyBadgeCallouts(
+    stats,
+    {
+      gameId,
+      gameDate,
+      gameStatus,
+      attempts,
+      guessResults,
+      submittedWords,
+      targetWord,
+    },
+    previousStats,
+  ), [
+    attempts,
+    gameDate,
+    gameId,
+    gameStatus,
+    guessResults,
+    previousStats,
+    stats,
+    submittedWords,
+    targetWord,
+  ]);
+
   if (!isOpen) return null;
 
   const distribution = stats?.guessDistribution || {};
@@ -57,6 +87,45 @@ const ResultsPanel = ({
         <h2 className="results-heading" id="results-heading">
           Thanks for playing today!
         </h2>
+
+        {earnedDailyBadges.length > 0 && (
+          <section
+            className="results-earned-badges"
+            aria-labelledby="results-earned-badges-label"
+            aria-live="polite"
+          >
+            <h3 className="results-earned-badges-label" id="results-earned-badges-label">
+              {earnedDailyBadges.length === 1 ? 'Badge earned' : 'Badges earned'}
+            </h3>
+
+            <div className="results-earned-badges-list">
+              {earnedDailyBadges.map((badge) => {
+                const isFeatured =
+                  badge.id === 'sea-of-greens' || badge.id === 'wordle-in-1';
+
+                return (
+                  <article
+                    className={`results-earned-badge ${isFeatured ? 'results-earned-badge--featured' : ''}`}
+                    data-badge-id={badge.id}
+                    key={badge.id}
+                  >
+                    <span className="results-earned-badge-medal" aria-hidden="true">
+                      <span>{badge.icon}</span>
+                    </span>
+                    <span className="results-earned-badge-copy">
+                      <span className="results-earned-badge-kicker">Earned this daily</span>
+                      <strong>{badge.name}</strong>
+                      <span className="results-earned-badge-description">
+                        {badge.description}
+                      </span>
+                      <span className="results-earned-badge-status">{badge.statusText}</span>
+                    </span>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="results-stats-section" aria-labelledby="results-statistics-label">
           <h3 className="results-stats-label" id="results-statistics-label">
