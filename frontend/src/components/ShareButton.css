@@ -9,15 +9,24 @@
 .share-btn {
   min-width: 116px;
   min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: 1px solid hsl(132 31% 43% / 0.66);
   border-radius: var(--radius-md);
   padding: 0 18px;
   background: var(--color-correct);
   color: hsl(0 0% 100%);
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: 850;
+  line-height: 1;
   cursor: pointer;
   transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.share-btn svg {
+  flex: 0 0 auto;
 }
 
 .share-btn:hover {

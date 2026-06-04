@@ -1,3 +1,4 @@
+import { ArrowLeft, Trophy, X } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
 import './ResultsPanel.css';
@@ -44,11 +45,14 @@ const ResultsPanel = ({
         onClick={(event) => event.stopPropagation()}
       >
         <button className="results-panel-close" type="button" onClick={onClose}>
+          <ArrowLeft size={16} weight="bold" aria-hidden="true" />
           <span>Back to puzzle</span>
-          <span aria-hidden="true">&times;</span>
+          <X size={15} weight="bold" aria-hidden="true" />
         </button>
 
-        <div className="results-star-badge" aria-hidden="true" />
+        <div className="results-star-badge" aria-hidden="true">
+          <Trophy size={31} weight="bold" />
+        </div>
 
         <h2 className="results-heading" id="results-heading">
           Thanks for playing today!

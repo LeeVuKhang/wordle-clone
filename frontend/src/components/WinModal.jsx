@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Trophy } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
 import './ResultModal.css';
@@ -7,17 +8,15 @@ import './WinModal.css';
 const CONFETTI_COLORS = [
   'var(--color-correct-strong)',
   'var(--color-present-strong)',
-  'var(--color-info)',
-  'hsl(286 70% 68%)',
-  'hsl(12 85% 64%)',
+  'var(--color-text-secondary)',
 ];
 
 function createConfetti() {
-  return Array.from({ length: 52 }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / 52;
-    const radius = 150 + Math.random() * 130;
-    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 90;
-    const y = Math.sin(angle) * radius - 70 + (Math.random() - 0.5) * 70;
+  return Array.from({ length: 34 }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / 34;
+    const radius = 112 + Math.random() * 90;
+    const x = Math.cos(angle) * radius + (Math.random() - 0.5) * 60;
+    const y = Math.sin(angle) * radius - 54 + (Math.random() - 0.5) * 48;
 
     return {
       id: index,
@@ -26,7 +25,7 @@ function createConfetti() {
       y: `${y.toFixed(0)}px`,
       rotation: `${Math.floor(Math.random() * 720 - 360)}deg`,
       delay: `${(Math.random() * 0.18).toFixed(2)}s`,
-      duration: `${(1.65 + Math.random() * 0.8).toFixed(2)}s`,
+      duration: `${(1.35 + Math.random() * 0.48).toFixed(2)}s`,
     };
   });
 }
@@ -86,6 +85,10 @@ const WinModal = ({
               }}
             />
           ))}
+        </div>
+
+        <div className="result-icon result-icon--win" aria-hidden="true">
+          <Trophy size={30} weight="bold" />
         </div>
 
         <h2 className="result-title">You won!</h2>

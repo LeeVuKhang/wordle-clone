@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowClockwise, Timer } from '@phosphor-icons/react';
 import './CountdownTimer.css';
 
 /**
@@ -38,7 +39,8 @@ const CountdownTimer = ({ compact = false }) => {
   return (
     <div className={`countdown-timer ${compact ? 'countdown-timer--compact' : ''}`}>
       <span className="countdown-label">
-        {isReady ? 'New word available!' : 'Next word'}
+        <Timer size={17} weight="bold" aria-hidden="true" />
+        <span>{isReady ? 'New word available!' : 'Next word'}</span>
       </span>
       {isReady ? (
         <button
@@ -46,7 +48,8 @@ const CountdownTimer = ({ compact = false }) => {
           type="button"
           onClick={() => window.location.reload()}
         >
-          Refresh
+          <ArrowClockwise size={16} weight="bold" aria-hidden="true" />
+          <span>Refresh</span>
         </button>
       ) : (
         <span className="countdown-value">{formatRemaining(remainingMs)}</span>

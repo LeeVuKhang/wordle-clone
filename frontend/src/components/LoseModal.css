@@ -21,7 +21,7 @@
   border: 1px solid hsl(45 70% 56% / 0.62);
   border-radius: var(--radius-md);
   padding: 0 22px;
-  background: hsl(45 54% 47% / 0.16);
+  background: color-mix(in srgb, var(--color-present) 18%, transparent);
   color: var(--color-text-primary);
   font-family: var(--font-display);
   font-size: 2rem;

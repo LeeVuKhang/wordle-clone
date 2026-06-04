@@ -1,3 +1,4 @@
+import { WarningCircle } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
 import './ResultModal.css';
@@ -26,6 +27,10 @@ const LoseModal = ({
   return (
     <div className="result-overlay" onClick={onClose}>
       <div className="result-modal lose-modal" onClick={(event) => event.stopPropagation()}>
+        <div className="result-icon result-icon--lose" aria-hidden="true">
+          <WarningCircle size={30} weight="bold" />
+        </div>
+
         <h2 className="result-title">Game Over</h2>
         <p className="lose-kicker">The word was</p>
         <div className="lose-answer" aria-label={`Correct answer ${answer}`}>

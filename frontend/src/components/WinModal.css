@@ -12,8 +12,8 @@
 .win-stats-grid div {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 12px;
-  background: var(--color-surface);
+  padding: 13px 12px;
+  background: var(--color-panel-raised);
 }
 
 .win-stats-grid span {
@@ -43,8 +43,8 @@
   position: absolute;
   top: 48%;
   left: 50%;
-  width: 8px;
-  height: 13px;
+  width: 7px;
+  height: 11px;
   border-radius: 2px;
   background: var(--confetti-color);
   opacity: 0;

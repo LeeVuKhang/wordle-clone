@@ -1,3 +1,4 @@
+import { X } from '@phosphor-icons/react';
 import './Modal.css';
 
 const Modal = ({ isOpen, onClose, title, message, children, onAction, actionText }) => {
@@ -15,6 +16,7 @@ const Modal = ({ isOpen, onClose, title, message, children, onAction, actionText
                         </button>
                     )}
                     <button className="modal-btn secondary" onClick={onClose}>
+                        <X size={16} weight="bold" aria-hidden="true" />
                         Close
                     </button>
                 </div>

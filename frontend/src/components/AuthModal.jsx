@@ -1,3 +1,4 @@
+import { CheckCircle, GoogleLogo } from '@phosphor-icons/react';
 import './AuthModal.css';
 
 /**
@@ -26,6 +27,9 @@ const AuthModal = ({ isOpen, onClose, isLoading, error, mergeResult }) => {
       <div className="auth-modal" onClick={(e) => e.stopPropagation()}>
         {mergeResult ? (
           <div className="auth-modal__merge-success">
+            <div className="auth-modal__icon auth-modal__icon--success" aria-hidden="true">
+              <CheckCircle size={30} weight="bold" />
+            </div>
             <h2>Welcome back!</h2>
             <p className="auth-modal__merge-info">
               Your progress has been saved.
@@ -45,6 +49,9 @@ const AuthModal = ({ isOpen, onClose, isLoading, error, mergeResult }) => {
           </div>
         ) : (
           <>
+            <div className="auth-modal__icon" aria-hidden="true">
+              <GoogleLogo size={30} weight="bold" />
+            </div>
             <h2 className="auth-modal__title">Sign in to save progress</h2>
             <p className="auth-modal__subtitle">
               Your streak and stats will be preserved across devices.
@@ -62,7 +69,8 @@ const AuthModal = ({ isOpen, onClose, isLoading, error, mergeResult }) => {
               onClick={handleGoogleLogin}
               disabled={isLoading}
             >
-              {isLoading ? 'Signing in...' : 'Continue with Google'}
+              <GoogleLogo size={18} weight="bold" aria-hidden="true" />
+              <span>{isLoading ? 'Signing in...' : 'Continue with Google'}</span>
             </button>
 
             <p className="auth-modal__guest-note">

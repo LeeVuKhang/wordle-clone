@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ShareNetwork } from '@phosphor-icons/react';
 import { generateShareText } from '../utils/shareResult.js';
 import './ShareButton.css';
 
@@ -45,7 +46,8 @@ const ShareButton = ({
   return (
     <div className="share-block">
       <button className="share-btn" type="button" onClick={handleShare}>
-        Share
+        <ShareNetwork size={18} weight="bold" aria-hidden="true" />
+        <span>Share</span>
       </button>
 
       {fallbackText && (
