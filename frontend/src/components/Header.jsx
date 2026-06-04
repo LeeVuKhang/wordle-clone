@@ -1,4 +1,11 @@
 import ModeSwitch from './ModeSwitch';
+import {
+  ChartBar,
+  SignIn,
+  SignOut,
+  Trophy,
+  UserCircle,
+} from '@phosphor-icons/react';
 import './Header.css';
 
 /**
@@ -16,40 +23,47 @@ const Header = ({
   onLeaderboardClick,
 }) => {
   const activeModeLabel = mode === 'daily' ? 'Daily' : 'Practice';
+  const playerName = user ? (user.username || user.email.split('@')[0]) : null;
 
   return (
     <header className="header">
       <div className="header-container">
-        <div className="header-side header-side--left" aria-hidden="true">
-          <span className="header-pill">{activeModeLabel}</span>
-        </div>
-
-        <div className="brand-panel">
-          <a className="brand-link" href="/" aria-label="Wordle Clone home">
+        <a className="brand-link" href="/" aria-label="Wordle Clone home">
+          <span className="brand-mark" aria-hidden="true">W</span>
+          <span className="brand-copy">
             <span className="title">Wordle</span>
             <span className="title-subtitle">Clone</span>
-          </a>
+          </span>
+        </a>
 
+        <div className="header-play">
+          <span className="header-pill" aria-label={`Current mode ${activeModeLabel}`}>
+            {activeModeLabel}
+          </span>
           <ModeSwitch mode={mode} onSwitch={onSwitchMode} />
-
-          <div className="header-nav" aria-label="Player panels">
-            <button className="header-btn header-btn--tool" type="button" onClick={onStatsClick}>
-              Stats
-            </button>
-            <button className="header-btn header-btn--tool" type="button" onClick={onLeaderboardClick}>
-              Leaderboard
-            </button>
-          </div>
         </div>
 
-        <div className="header-side header-auth">
+        <div className="header-nav" aria-label="Player panels">
+          <button className="header-btn header-btn--tool" type="button" onClick={onStatsClick} aria-label="Stats">
+            <ChartBar size={17} weight="bold" aria-hidden="true" />
+            <span>Stats</span>
+          </button>
+          <button className="header-btn header-btn--tool" type="button" onClick={onLeaderboardClick} aria-label="Leaderboard">
+            <Trophy size={17} weight="bold" aria-hidden="true" />
+            <span>Leaderboard</span>
+          </button>
+        </div>
+
+        <div className="header-auth">
           {user ? (
             <div className="header-user">
-              <span className="header-username">
-                {user.username || user.email.split('@')[0]}
+              <span className="header-username" title={playerName}>
+                <UserCircle size={18} weight="bold" aria-hidden="true" />
+                <span>{playerName}</span>
               </span>
-              <button className="header-btn header-btn--ghost" onClick={onLogout}>
-                Sign out
+              <button className="header-btn header-btn--ghost" onClick={onLogout} aria-label="Sign out">
+                <SignOut size={17} weight="bold" aria-hidden="true" />
+                <span>Sign out</span>
               </button>
             </div>
           ) : (
@@ -57,8 +71,10 @@ const Header = ({
               id="header-login-btn"
               className="header-btn header-btn--primary"
               onClick={onAuthClick}
+              aria-label="Sign in"
             >
-              Sign in
+              <SignIn size={17} weight="bold" aria-hidden="true" />
+              <span>Sign in</span>
             </button>
           )}
         </div>

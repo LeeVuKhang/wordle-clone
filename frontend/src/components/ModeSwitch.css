@@ -1,23 +1,24 @@
 .mode-switch {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   border: 1px solid var(--color-border);
   border-radius: 999px;
-  padding: 4px;
-  background: hsl(220 12% 6% / 0.45);
-  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  padding: 3px;
+  background: color-mix(in srgb, var(--color-background) 58%, transparent);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / 0.045);
 }
 
 .mode-btn {
-  min-height: 28px;
+  min-height: 30px;
   border: 0;
   border-radius: 999px;
-  padding: 0 13px;
+  padding: 0 12px;
   background: transparent;
   color: var(--color-text-muted);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 850;
+  line-height: 1;
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
@@ -25,7 +26,7 @@
 .mode-btn--active {
   background: var(--color-text-primary);
   color: var(--color-background);
-  box-shadow: 0 4px 14px hsl(220 18% 3% / 0.28);
+  box-shadow: 0 8px 20px hsl(214 18% 3% / 0.24);
 }
 
 .mode-btn:hover:not(.mode-btn--active) {
@@ -39,7 +40,7 @@
 
 @media (prefers-color-scheme: light) {
   .mode-switch {
-    background: hsl(0 0% 100% / 0.48);
+    background: hsl(0 0% 100% / 0.54);
   }
 }
 

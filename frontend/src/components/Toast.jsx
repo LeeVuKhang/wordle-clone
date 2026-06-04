@@ -1,4 +1,17 @@
+import {
+  CheckCircle,
+  Info,
+  WarningCircle,
+  XCircle,
+} from '@phosphor-icons/react';
 import './Toast.css';
+
+const TOAST_ICONS = {
+  success: CheckCircle,
+  warning: WarningCircle,
+  error: XCircle,
+  info: Info,
+};
 
 /**
  * Toast — ephemeral notification (Task 8.10)
@@ -6,9 +19,12 @@ import './Toast.css';
  */
 const Toast = ({ message, type = 'info' }) => {
   if (!message) return null;
+  const Icon = TOAST_ICONS[type] || Info;
+
   return (
     <div className={`toast toast--${type}`} role="alert">
-      {message}
+      <Icon size={18} weight="bold" aria-hidden="true" />
+      <span>{message}</span>
     </div>
   );
 };
