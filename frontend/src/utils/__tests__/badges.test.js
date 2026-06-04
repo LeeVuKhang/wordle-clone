@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeBadges } from '../badges.js';
+import { computeBadges, computeDailyBadgeCallouts } from '../badges.js';
 
 describe('computeBadges', () => {
   it('marks first-guess and streak badges as earned from stats', () => {
@@ -129,5 +129,67 @@ describe('computeBadges', () => {
       progress: 25,
       progressText: '25/100 games',
     });
+  });
+
+  it('calls out Sea of Greens and Wordle In 1 for the just-finished daily game', () => {
+    const callouts = computeDailyBadgeCallouts(null, {
+      gameId: 'daily-1',
+      gameDate: '2026-05-27',
+      gameStatus: 'WON',
+      attempts: 1,
+      guessResults: [
+        [
+          { letter: 'C', status: 'correct' },
+          { letter: 'R', status: 'correct' },
+          { letter: 'A', status: 'correct' },
+          { letter: 'N', status: 'correct' },
+          { letter: 'E', status: 'correct' },
+        ],
+      ],
+    });
+
+    expect(callouts.map((badge) => badge.id)).toEqual([
+      'sea-of-greens',
+      'wordle-in-1',
+    ]);
+  });
+
+  it('calls out badges newly unlocked by refreshed daily stats', () => {
+    const previousStats = {
+      gamesPlayed: 9,
+      gamesWon: 9,
+      winPercentage: 100,
+      currentStreak: 9,
+      maxStreak: 9,
+      guessDistribution: { 1: 0 },
+    };
+
+    const currentStats = {
+      gamesPlayed: 10,
+      gamesWon: 10,
+      winPercentage: 100,
+      currentStreak: 10,
+      maxStreak: 10,
+      guessDistribution: { 1: 0 },
+      completedDailyGames: [
+        {
+          id: 'daily-10',
+          gameDate: '2026-05-28T00:00:00.000Z',
+          completedAt: '2026-05-28T12:00:00.000Z',
+          status: 'WON',
+          targetWord: 'CRANE',
+          guesses: ['TRACE', 'CRANE'],
+        },
+      ],
+    };
+
+    const callouts = computeDailyBadgeCallouts(currentStats, {
+      gameId: 'daily-10',
+      gameDate: '2026-05-28',
+      gameStatus: 'WON',
+      attempts: 2,
+    }, previousStats);
+
+    expect(callouts.map((badge) => badge.id)).toEqual(['10-day-streak']);
   });
 });

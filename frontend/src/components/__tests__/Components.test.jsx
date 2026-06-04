@@ -240,6 +240,41 @@ describe('ResultsPanel', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders badge callouts earned by the finished daily game', () => {
+    const perfectGuessResults = [
+      [
+        { letter: 'C', status: 'correct' },
+        { letter: 'R', status: 'correct' },
+        { letter: 'A', status: 'correct' },
+        { letter: 'N', status: 'correct' },
+        { letter: 'E', status: 'correct' },
+      ],
+    ];
+
+    render(
+      <ResultsPanel
+        isOpen
+        onClose={vi.fn()}
+        gameStatus="WON"
+        attempts={1}
+        user={null}
+        stats={null}
+        isStatsLoading={false}
+        statsError={null}
+        guessResults={perfectGuessResults}
+        submittedWords={['CRANE']}
+        targetWord="CRANE"
+        gameDate="2026-05-27"
+        onToast={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Badges earned' })).toBeInTheDocument();
+    expect(screen.getByText('Sea of Greens')).toBeInTheDocument();
+    expect(screen.getByText('Wordle In 1')).toBeInTheDocument();
+    expect(screen.getAllByText('Earned this daily')).toHaveLength(2);
+  });
 });
 
 describe('StatsModal', () => {
