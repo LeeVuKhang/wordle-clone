@@ -5,10 +5,10 @@
   grid-template-rows: 74px auto auto 8px;
   justify-items: center;
   gap: 7px;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 10px 6px;
-  background: transparent;
+  background: color-mix(in srgb, var(--color-panel-raised) 62%, transparent);
   color: var(--color-text-primary);
   cursor: pointer;
   transition:
@@ -20,8 +20,12 @@
 
 .badge-card:hover,
 .badge-card--selected {
-  border-color: var(--color-border);
-  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  background: var(--color-panel-raised);
+}
+
+.badge-card--selected {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-correct) 28%, transparent);
 }
 
 .badge-card:active {
@@ -101,7 +105,7 @@
   align-self: end;
   border: 1px solid var(--color-border-strong);
   border-radius: 999px;
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-background) 42%, transparent);
   overflow: hidden;
 }
 

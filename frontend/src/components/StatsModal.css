@@ -13,24 +13,48 @@
   margin-bottom: 18px;
 }
 
+.stats-heading-lockup {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.stats-heading-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid hsl(132 31% 43% / 0.5);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-correct) 15%, transparent);
+  color: var(--color-correct-strong);
+}
+
 .stats-header h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.45rem;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .stats-header button,
 .stats-error button,
 .stats-wordlebot-banner button {
   min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   padding: 0 14px;
-  background: var(--color-surface);
+  background: var(--color-panel-raised);
   color: var(--color-text-secondary);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 850;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -62,13 +86,22 @@
   gap: 14px;
 }
 
-.stats-spinner {
-  width: 34px;
-  height: 34px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-correct-strong);
-  border-radius: 50%;
-  animation: stats-spin 760ms linear infinite;
+.stats-skeleton-grid {
+  width: min(100%, 360px);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stats-skeleton-grid span {
+  height: 74px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.065), transparent),
+    var(--color-panel-raised);
+  background-size: 220% 100%;
+  animation: stats-skeleton 1.3s ease-in-out infinite;
 }
 
 .stats-summary-grid {
@@ -81,8 +114,16 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 12px 8px;
-  background: var(--color-surface);
+  background: var(--color-panel-raised);
   text-align: center;
+}
+
+.stats-empty {
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 14px;
+  background: var(--color-panel-raised);
 }
 
 .stats-summary-grid span {
@@ -97,6 +138,7 @@
 .stats-summary-grid strong {
   font-family: var(--font-display);
   font-size: 1.36rem;
+  font-weight: 850;
   line-height: 1;
 }
 
@@ -120,10 +162,13 @@
 .stats-section-title h3,
 .stats-distribution h3,
 .stats-wordlebot-banner h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   margin: 0 0 12px;
   color: var(--color-text-secondary);
   font-size: 0.86rem;
-  font-weight: 800;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
@@ -146,7 +191,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 12px 14px;
-  background: var(--color-surface);
+  background: var(--color-panel-raised);
 }
 
 .stats-badge-detail strong,
@@ -176,7 +221,7 @@
 
 .stats-bar-label {
   color: var(--color-text-secondary);
-  font-weight: 800;
+  font-weight: 850;
   text-align: center;
 }
 
@@ -184,7 +229,7 @@
   min-width: 0;
   height: 28px;
   border-radius: var(--radius-sm);
-  background: hsl(220 8% 28% / 0.48);
+  background: color-mix(in srgb, var(--color-absent) 38%, transparent);
   overflow: hidden;
 }
 
@@ -199,7 +244,7 @@
   background: var(--color-absent);
   color: var(--color-text-primary);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 850;
   transition: width var(--transition);
 }
 
@@ -215,7 +260,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 14px;
-  background: var(--color-surface);
+  background: var(--color-panel-raised);
 }
 
 .stats-wordlebot-mark {
@@ -256,6 +301,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .stats-skeleton-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .badges-container {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -270,8 +319,12 @@
   }
 }
 
-@keyframes stats-spin {
+@keyframes stats-skeleton {
+  from {
+    background-position: 120% 0;
+  }
+
   to {
-    transform: rotate(360deg);
+    background-position: -120% 0;
   }
 }

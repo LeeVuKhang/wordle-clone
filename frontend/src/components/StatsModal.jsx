@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowClockwise,
+  ChartBar,
+  Medal,
+  X,
+} from '@phosphor-icons/react';
 import Badge from './Badge';
 import { computeBadges } from '../utils/badges.js';
 import './PanelModal.css';
@@ -58,8 +64,16 @@ const StatsModal = ({
     <div className="panel-overlay stats-overlay" onClick={onClose}>
       <div className="panel-modal stats-modal" onClick={(event) => event.stopPropagation()}>
         <div className="stats-header">
-          <h2>Statistics</h2>
-          <button type="button" onClick={onClose}>Close</button>
+          <div className="stats-heading-lockup">
+            <span className="stats-heading-icon" aria-hidden="true">
+              <ChartBar size={24} weight="bold" />
+            </span>
+            <h2>Statistics</h2>
+          </div>
+          <button type="button" onClick={onClose}>
+            <X size={16} weight="bold" aria-hidden="true" />
+            <span>Close</span>
+          </button>
         </div>
 
         {!user && (
@@ -68,7 +82,12 @@ const StatsModal = ({
 
         {user && isLoading && (
           <div className="stats-loading">
-            <span className="stats-spinner" />
+            <div className="stats-skeleton-grid" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
             <p>Loading statistics...</p>
           </div>
         )}
@@ -76,7 +95,10 @@ const StatsModal = ({
         {user && !isLoading && displayError && (
           <div className="stats-error">
             <p>{displayError}</p>
-            <button type="button" onClick={refetch}>Retry</button>
+            <button type="button" onClick={refetch}>
+              <ArrowClockwise size={16} weight="bold" aria-hidden="true" />
+              <span>Retry</span>
+            </button>
           </div>
         )}
 
@@ -103,7 +125,7 @@ const StatsModal = ({
 
             <section className="stats-badges-section" aria-labelledby="stats-badges-heading">
               <div className="stats-section-title">
-                <h3 id="stats-badges-heading">Badges</h3>
+                <h3 id="stats-badges-heading"><Medal size={17} weight="bold" aria-hidden="true" /><span>Badges</span></h3>
                 <p>Tap on any badge to view it in detail</p>
               </div>
 
@@ -163,7 +185,8 @@ const StatsModal = ({
                 <p>Wordle Bot gives an analysis of your guesses. Did you beat the bot?</p>
               </div>
               <button type="button" onClick={() => window.alert('Coming in Phase 15')}>
-                Check Wordle Bot
+                <ChartBar size={16} weight="bold" aria-hidden="true" />
+                <span>Check Wordle Bot</span>
               </button>
             </section>
           </div>

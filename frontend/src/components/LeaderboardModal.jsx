@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowClockwise, Trophy, X } from '@phosphor-icons/react';
 import { statsApi } from '../services/api.js';
 import './PanelModal.css';
 import './LeaderboardModal.css';
@@ -75,16 +76,29 @@ const LeaderboardModal = ({ isOpen, onClose, onToast }) => {
     <div className="panel-overlay leaderboard-overlay" onClick={onClose}>
       <div className="panel-modal leaderboard-modal" onClick={(event) => event.stopPropagation()}>
         <div className="leaderboard-header">
-          <div>
+          <div className="leaderboard-heading-lockup">
+            <span className="leaderboard-heading-icon" aria-hidden="true">
+              <Trophy size={24} weight="bold" />
+            </span>
+            <div>
             <h2>Leaderboard</h2>
             <p>Top streaks</p>
+            </div>
           </div>
-          <button type="button" onClick={onClose}>Close</button>
+          <button type="button" onClick={onClose}>
+            <X size={16} weight="bold" aria-hidden="true" />
+            <span>Close</span>
+          </button>
         </div>
 
         {isLoading && (
           <div className="leaderboard-loading">
-            <span className="leaderboard-spinner" />
+            <div className="leaderboard-skeleton" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
             <p>Loading leaderboard...</p>
           </div>
         )}
@@ -92,7 +106,10 @@ const LeaderboardModal = ({ isOpen, onClose, onToast }) => {
         {!isLoading && error && (
           <div className="leaderboard-error">
             <p>{error}</p>
-            <button type="button" onClick={loadLeaderboard}>Retry</button>
+            <button type="button" onClick={loadLeaderboard}>
+              <ArrowClockwise size={16} weight="bold" aria-hidden="true" />
+              <span>Retry</span>
+            </button>
           </div>
         )}
 

@@ -11,11 +11,30 @@
   margin-bottom: 16px;
 }
 
+.leaderboard-heading-lockup {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.leaderboard-heading-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid hsl(45 70% 56% / 0.5);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-present) 15%, transparent);
+  color: var(--color-present-strong);
+}
+
 .leaderboard-header h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: 1.45rem;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .leaderboard-header p {
@@ -29,13 +48,18 @@
 .leaderboard-header button,
 .leaderboard-error button {
   min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   padding: 0 14px;
-  background: var(--color-surface);
+  background: var(--color-panel-raised);
   color: var(--color-text-secondary);
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 850;
+  line-height: 1;
   cursor: pointer;
 }
 
@@ -68,13 +92,29 @@
   text-align: center;
 }
 
-.leaderboard-spinner {
-  width: 34px;
-  height: 34px;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-correct-strong);
-  border-radius: 50%;
-  animation: leaderboard-spin 760ms linear infinite;
+.leaderboard-empty {
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 18px 14px;
+  background: var(--color-panel-raised);
+}
+
+.leaderboard-skeleton {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-skeleton span {
+  height: 38px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.065), transparent),
+    var(--color-panel-raised);
+  background-size: 220% 100%;
+  animation: leaderboard-skeleton 1.3s ease-in-out infinite;
 }
 
 .leaderboard-table {
@@ -91,7 +131,7 @@
   min-width: 540px;
   min-height: 42px;
   border-bottom: 1px solid var(--color-border);
-  background: hsl(220 12% 13% / 0.46);
+  background: color-mix(in srgb, var(--color-panel-raised) 72%, transparent);
 }
 
 .leaderboard-row:last-child {
@@ -100,10 +140,10 @@
 
 .leaderboard-row--head {
   min-height: 36px;
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-panel-raised) 90%, var(--color-background));
   color: var(--color-text-muted);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 850;
   text-transform: uppercase;
 }
 
@@ -112,7 +152,7 @@
   padding: 0 10px;
   overflow: hidden;
   font-size: 0.86rem;
-  font-weight: 750;
+  font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -135,8 +175,12 @@
   }
 }
 
-@keyframes leaderboard-spin {
+@keyframes leaderboard-skeleton {
+  from {
+    background-position: 120% 0;
+  }
+
   to {
-    transform: rotate(360deg);
+    background-position: -120% 0;
   }
 }
