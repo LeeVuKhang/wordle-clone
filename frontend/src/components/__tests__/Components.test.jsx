@@ -44,8 +44,8 @@ const mockWordleBotAnalysis = {
   rankingWordCount: 14855,
   botAttempts: 2,
   botStatus: 'WON',
-  verdict: 'TIE',
-  verdictText: 'Tie game',
+  verdict: 'BOT_WIN',
+  verdictText: 'Bot wins',
   rows: [
     {
       attempt: 1,
@@ -484,10 +484,10 @@ describe('StatsModal', () => {
     expect(await screen.findByText('Avg Skill')).toBeInTheDocument();
     expect(screen.getByText('88')).toBeInTheDocument();
     expect(screen.getAllByText('TRACE').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Tie game')).toBeInTheDocument();
-    expect(screen.getByText('Bot path')).toBeInTheDocument();
     expect(screen.getAllByText('CRANE').length).toBeGreaterThanOrEqual(3);
     expect(screen.getByText('#125 of 14,855')).toBeInTheDocument();
+    expect(screen.queryByText('Bot wins')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bot path')).not.toBeInTheDocument();
   });
 });
 
@@ -558,15 +558,18 @@ describe('WordleBotPanel', () => {
     expect(screen.getByText('Unable to analyze this daily game.')).toBeInTheDocument();
   });
 
-  it('renders summary, player rows, bot path, and collapse behavior', () => {
+  it('renders summary and player rows without bot verdict or bot path', () => {
     render(<WordleBotPanel game={game} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Check Wordle Bot' }));
 
-    expect(screen.getByText('Tie game')).toBeInTheDocument();
+    expect(screen.getByText('Avg Skill')).toBeInTheDocument();
     expect(screen.getByText('Your guesses')).toBeInTheDocument();
-    expect(screen.getByText('Bot path')).toBeInTheDocument();
     expect(screen.getByText('#125 of 14,855')).toBeInTheDocument();
+    expect(screen.getAllByText('Bot pick')).toHaveLength(2);
+    expect(screen.queryByText('Bot wins')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bot path')).not.toBeInTheDocument();
+    expect(screen.queryByText(/You .*\/ Bot/u)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide Wordle Bot' }));
 

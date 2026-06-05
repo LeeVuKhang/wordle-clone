@@ -44,11 +44,6 @@ function gameIdentity(game) {
   ].join('|');
 }
 
-function attemptLabel(status, attempts) {
-  if (status === 'WON') return `${attempts}/6`;
-  return 'Missed';
-}
-
 function ScoreMeter({ label, value }) {
   const score = Number.isFinite(value) ? Math.max(0, Math.min(99, value)) : 0;
 
@@ -93,35 +88,6 @@ function PlayerRow({ row }) {
         <div>
           <dt>Bot pick</dt>
           <dd>{row.botGuess || '--'}</dd>
-        </div>
-      </dl>
-    </div>
-  );
-}
-
-function BotRow({ row }) {
-  return (
-    <div className="wordlebot-row wordlebot-row--bot">
-      <div className="wordlebot-row-heading">
-        <div>
-          <span>Bot {row.attempt}</span>
-          <strong>{row.guess}</strong>
-        </div>
-        <span>{row.isAnswer ? 'Solved' : `${formatNumber(row.remainingAfter)} left`}</span>
-      </div>
-
-      <dl className="wordlebot-details wordlebot-details--bot">
-        <div>
-          <dt>Remaining</dt>
-          <dd>{formatNumber(row.remainingBefore)} to {formatNumber(row.remainingAfter)}</dd>
-        </div>
-        <div>
-          <dt>Entropy</dt>
-          <dd>{formatNumber(row.weightedEntropy, 2)}</dd>
-        </div>
-        <div>
-          <dt>Expected</dt>
-          <dd>{formatNumber(row.expectedRemaining, 1)}</dd>
         </div>
       </dl>
     </div>
@@ -215,13 +181,6 @@ const WordleBotPanel = ({
 
           {isReady && (
             <>
-              <div className={`wordlebot-verdict wordlebot-verdict--${analysis.verdict.toLowerCase()}`}>
-                <span>{analysis.verdictText}</span>
-                <strong>
-                  You {attemptLabel(analysis.status, analysis.guessCount)} / Bot {attemptLabel(analysis.botStatus, analysis.botAttempts)}
-                </strong>
-              </div>
-
               <div className="wordlebot-summary-grid">
                 <div>
                   <span>Avg Skill</span>
@@ -245,11 +204,6 @@ const WordleBotPanel = ({
                 <h4>Your guesses</h4>
                 {analysis.rows.map((row) => (
                   <PlayerRow row={row} key={`player-${row.attempt}-${row.guess}`} />
-                ))}
-
-                <h4>Bot path</h4>
-                {analysis.botPath.map((row) => (
-                  <BotRow row={row} key={`bot-${row.attempt}-${row.guess}`} />
                 ))}
               </div>
             </>

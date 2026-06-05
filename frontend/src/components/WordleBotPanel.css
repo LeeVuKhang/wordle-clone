@@ -116,42 +116,6 @@
   color: var(--color-error);
 }
 
-.wordlebot-verdict {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-  padding: 10px 0;
-}
-
-.wordlebot-verdict span,
-.wordlebot-verdict strong {
-  min-width: 0;
-  font-size: 0.86rem;
-  font-weight: 850;
-  line-height: 1.25;
-}
-
-.wordlebot-verdict span {
-  color: var(--color-text-primary);
-}
-
-.wordlebot-verdict strong {
-  color: var(--color-text-secondary);
-  text-align: right;
-}
-
-.wordlebot-verdict--player_win span {
-  color: var(--color-correct-strong);
-}
-
-.wordlebot-verdict--bot_win span {
-  color: var(--color-present-strong);
-}
-
 .wordlebot-summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -314,15 +278,6 @@
   .wordlebot-panel button {
     grid-column: 1 / -1;
     justify-self: start;
-  }
-
-  .wordlebot-verdict {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .wordlebot-verdict strong {
-    text-align: left;
   }
 
   .wordlebot-summary-grid {
