@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Cell from '../Cell.jsx';
 import GameBoard from '../GameBoard.jsx';
 import Keyboard from '../Keyboard.jsx';
@@ -8,6 +8,16 @@ import ModeSwitch from '../ModeSwitch.jsx';
 import ResultsPanel from '../ResultsPanel.jsx';
 import StatsModal from '../StatsModal.jsx';
 
+const wordleBotMock = vi.hoisted(() => ({
+  selectLatestCompletedDailyGame: vi.fn(),
+  analyzeCompletedDailyGame: vi.fn(),
+}));
+
+vi.mock('../../utils/wordleBot.js', () => ({
+  selectLatestCompletedDailyGame: wordleBotMock.selectLatestCompletedDailyGame,
+  analyzeCompletedDailyGame: wordleBotMock.analyzeCompletedDailyGame,
+}));
+
 const completedRow = [
   { letter: 'C', status: 'correct' },
   { letter: 'R', status: 'present' },
@@ -15,6 +25,48 @@ const completedRow = [
   { letter: 'N', status: 'absent' },
   { letter: 'E', status: 'correct' },
 ];
+
+const mockWordleBotAnalysis = {
+  averageSkill: 88,
+  averageLuck: 61,
+  guessCount: 2,
+  finalRemaining: 1,
+  rows: [
+    {
+      attempt: 1,
+      guess: 'TRACE',
+      rank: 125,
+      rankTotal: 14855,
+      skillScore: 93,
+      luckScore: 52,
+      remainingBefore: 2355,
+      remainingAfter: 87,
+      expectedRemaining: 95.4,
+      botGuess: 'CRANE',
+    },
+    {
+      attempt: 2,
+      guess: 'CRANE',
+      rank: 1,
+      rankTotal: 14855,
+      skillScore: 99,
+      luckScore: 99,
+      remainingBefore: 87,
+      remainingAfter: 1,
+      expectedRemaining: 1,
+      botGuess: 'CRANE',
+    },
+  ],
+};
+
+beforeEach(() => {
+  wordleBotMock.selectLatestCompletedDailyGame.mockReset();
+  wordleBotMock.analyzeCompletedDailyGame.mockReset();
+  wordleBotMock.selectLatestCompletedDailyGame.mockImplementation(
+    (stats) => stats?.completedDailyGames?.[0] || null,
+  );
+  wordleBotMock.analyzeCompletedDailyGame.mockReturnValue(mockWordleBotAnalysis);
+});
 
 describe('GameBoard', () => {
   it('renders 6 rows', () => {
@@ -285,9 +337,20 @@ describe('StatsModal', () => {
     currentStreak: 59,
     maxStreak: 59,
     guessDistribution: { 1: 0, 2: 3, 3: 26, 4: 60, 5: 12, 6: 1 },
+    completedDailyGames: [
+      {
+        id: 'daily-1',
+        gameDate: '2026-05-27T00:00:00.000Z',
+        completedAt: '2026-05-27T12:00:00.000Z',
+        status: 'WON',
+        attempts: 2,
+        targetWord: 'CRANE',
+        guesses: ['TRACE', 'CRANE'],
+      },
+    ],
   };
 
-  it('renders summary, badges, distribution, and Wordle Bot placeholder', () => {
+  it('renders summary, badges, distribution, and Wordle Bot action', () => {
     const { container } = render(
       <StatsModal
         isOpen
@@ -307,8 +370,9 @@ describe('StatsModal', () => {
     expect(screen.getByText('Sea of Greens')).toBeInTheDocument();
     expect(screen.getByText('100-Day Streak')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Guess Distribution' })).toBeInTheDocument();
-    expect(screen.getByText('Wordle Bot gives an analysis of your guesses. Did you beat the bot?'))
+    expect(screen.getByText('Analyze your 2026-05-27 guesses against the full word list.'))
       .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check Wordle Bot' })).toBeEnabled();
 
     const headings = Array.from(container.querySelectorAll('.stats-content-scrollable h3'))
       .map((heading) => heading.textContent);
@@ -333,5 +397,54 @@ describe('StatsModal', () => {
 
     expect(screen.getByText('Build a 100-day daily winning streak.')).toBeInTheDocument();
     expect(screen.getByText('59/100 days')).toBeInTheDocument();
+  });
+
+  it('disables Wordle Bot when no completed daily game is available', () => {
+    wordleBotMock.selectLatestCompletedDailyGame.mockReturnValue(null);
+
+    render(
+      <StatsModal
+        isOpen
+        onClose={vi.fn()}
+        user={{ id: 'user-1' }}
+        stats={{ ...stats, completedDailyGames: [] }}
+        isLoading={false}
+        error={null}
+        refetch={vi.fn()}
+        highlightAttempt={4}
+      />,
+    );
+
+    expect(screen.getByText('Complete a daily game to unlock Wordle Bot analysis.'))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check Wordle Bot' })).toBeDisabled();
+  });
+
+  it('expands a real Wordle Bot analysis panel from the action button', async () => {
+    render(
+      <StatsModal
+        isOpen
+        onClose={vi.fn()}
+        user={{ id: 'user-1' }}
+        stats={stats}
+        isLoading={false}
+        error={null}
+        refetch={vi.fn()}
+        highlightAttempt={4}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Check Wordle Bot' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Analyzing the latest completed daily game...',
+    );
+    expect(await screen.findByText('Avg Skill')).toBeInTheDocument();
+    expect(screen.getByText('88')).toBeInTheDocument();
+    expect(screen.getByText('TRACE')).toBeInTheDocument();
+    expect(screen.getAllByText('CRANE')).toHaveLength(3);
+    expect(screen.getByText('#125 of 14,855')).toBeInTheDocument();
+    expect(wordleBotMock.analyzeCompletedDailyGame)
+      .toHaveBeenCalledWith(stats.completedDailyGames[0]);
   });
 });
