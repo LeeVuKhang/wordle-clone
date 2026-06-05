@@ -112,10 +112,10 @@ describe('GET /api/game/today', () => {
         expect(prismaMock.dailyGame.create).not.toHaveBeenCalled();
     });
 
-    it('returns an error when no user or guest identity is provided', async () => {
+    it('returns 401 when no user or guest identity is provided', async () => {
         const res = await request(app).get('/api/game/today');
 
-        expect(res.status).toBeGreaterThanOrEqual(400);
-        expect(res.body.error).toBeDefined();
+        expect(res.status).toBe(401);
+        expect(res.body.error.code).toBe('UNAUTHORIZED');
     });
 });

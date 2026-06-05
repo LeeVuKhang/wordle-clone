@@ -30,6 +30,15 @@ function playingGame(overrides: Record<string, unknown> = {}) {
 }
 
 describe('POST /api/game/sync', () => {
+    it('returns 401 when no user or guest identity is provided', async () => {
+        const res = await request(app)
+            .post('/api/game/sync')
+            .send({ id: 'game-1', guesses: ['ADIEU'], status: 'PLAYING' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
     it('persists guesses, updates attempts, and returns the updated state', async () => {
         prismaMock.dailyGame.findUnique.mockResolvedValueOnce(playingGame());
 

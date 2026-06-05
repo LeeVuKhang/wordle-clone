@@ -4,11 +4,12 @@
  */
 
 import { Router } from 'express';
+import { requireIdentity } from '../../middleware/auth.middleware.js';
 import * as gameController from './game.controller.js';
 
 const router = Router();
 
-router.get('/today', gameController.getToday);
-router.post('/sync', gameController.syncGame);
+router.get('/today', requireIdentity, gameController.getToday);
+router.post('/sync', requireIdentity, gameController.syncGame);
 
 export default router;
