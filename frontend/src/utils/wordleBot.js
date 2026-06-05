@@ -1,10 +1,5 @@
-import { compareWord } from './compareWord.js';
-
-const STATUS_PATTERN = {
-  correct: 'G',
-  present: 'Y',
-  absent: 'B',
-};
+const PATTERN_DIGITS = ['B', 'Y', 'G'];
+const PATTERN_COUNT = 243;
 
 const DEFAULT_FREQUENCY_CONFIG = {
   defaultWeight: 1,
@@ -122,6 +117,10 @@ export function getWordWeight(word, frequencyConfig = {}) {
   if (!normalized) return 0;
 
   const config = normalizeFrequencyConfig(frequencyConfig);
+  return getWordWeightFromConfig(normalized, config);
+}
+
+function getWordWeightFromConfig(normalized, config) {
   const letters = normalized.split('');
   const uniqueLetters = new Set(letters);
   let weight = config.defaultWeight;
@@ -145,35 +144,119 @@ export function getWordWeight(word, frequencyConfig = {}) {
 }
 
 function buildCandidateWeights(candidates, frequencyConfig) {
-  const weights = new Map();
+  const config = normalizeFrequencyConfig(frequencyConfig);
 
-  candidates.forEach((word) => {
-    weights.set(word, getWordWeight(word, frequencyConfig));
-  });
+  return candidates.map((word) => getWordWeightFromConfig(word, config));
+}
 
-  return weights;
+function patternCode(guess, targetWord) {
+  const g0 = guess.charCodeAt(0);
+  const g1 = guess.charCodeAt(1);
+  const g2 = guess.charCodeAt(2);
+  const g3 = guess.charCodeAt(3);
+  const g4 = guess.charCodeAt(4);
+  const t0 = targetWord.charCodeAt(0);
+  const t1 = targetWord.charCodeAt(1);
+  const t2 = targetWord.charCodeAt(2);
+  const t3 = targetWord.charCodeAt(3);
+  const t4 = targetWord.charCodeAt(4);
+
+  const c0 = g0 === t0;
+  const c1 = g1 === t1;
+  const c2 = g2 === t2;
+  const c3 = g3 === t3;
+  const c4 = g4 === t4;
+
+  let s0 = c0 ? 2 : 0;
+  let s1 = c1 ? 2 : 0;
+  let s2 = c2 ? 2 : 0;
+  let s3 = c3 ? 2 : 0;
+  let s4 = c4 ? 2 : 0;
+  let available;
+  let used;
+
+  if (!c0) {
+    available = (!c1 && t1 === g0 ? 1 : 0) +
+      (!c2 && t2 === g0 ? 1 : 0) +
+      (!c3 && t3 === g0 ? 1 : 0) +
+      (!c4 && t4 === g0 ? 1 : 0);
+    if (available > 0) s0 = 1;
+  }
+
+  if (!c1) {
+    available = (!c0 && t0 === g1 ? 1 : 0) +
+      (!c2 && t2 === g1 ? 1 : 0) +
+      (!c3 && t3 === g1 ? 1 : 0) +
+      (!c4 && t4 === g1 ? 1 : 0);
+    used = s0 === 1 && g0 === g1 ? 1 : 0;
+    if (used < available) s1 = 1;
+  }
+
+  if (!c2) {
+    available = (!c0 && t0 === g2 ? 1 : 0) +
+      (!c1 && t1 === g2 ? 1 : 0) +
+      (!c3 && t3 === g2 ? 1 : 0) +
+      (!c4 && t4 === g2 ? 1 : 0);
+    used = (s0 === 1 && g0 === g2 ? 1 : 0) +
+      (s1 === 1 && g1 === g2 ? 1 : 0);
+    if (used < available) s2 = 1;
+  }
+
+  if (!c3) {
+    available = (!c0 && t0 === g3 ? 1 : 0) +
+      (!c1 && t1 === g3 ? 1 : 0) +
+      (!c2 && t2 === g3 ? 1 : 0) +
+      (!c4 && t4 === g3 ? 1 : 0);
+    used = (s0 === 1 && g0 === g3 ? 1 : 0) +
+      (s1 === 1 && g1 === g3 ? 1 : 0) +
+      (s2 === 1 && g2 === g3 ? 1 : 0);
+    if (used < available) s3 = 1;
+  }
+
+  if (!c4) {
+    available = (!c0 && t0 === g4 ? 1 : 0) +
+      (!c1 && t1 === g4 ? 1 : 0) +
+      (!c2 && t2 === g4 ? 1 : 0) +
+      (!c3 && t3 === g4 ? 1 : 0);
+    used = (s0 === 1 && g0 === g4 ? 1 : 0) +
+      (s1 === 1 && g1 === g4 ? 1 : 0) +
+      (s2 === 1 && g2 === g4 ? 1 : 0) +
+      (s3 === 1 && g3 === g4 ? 1 : 0);
+    if (used < available) s4 = 1;
+  }
+
+  return (((((s0 * 3) + s1) * 3 + s2) * 3 + s3) * 3) + s4;
 }
 
 function patternKey(guess, targetWord) {
-  return compareWord(guess, targetWord)
-    .map((cell) => STATUS_PATTERN[cell.status] || 'B')
-    .join('');
+  let code = patternCode(guess, targetWord);
+  const pattern = ['B', 'B', 'B', 'B', 'B'];
+
+  for (let index = 4; index >= 0; index -= 1) {
+    pattern[index] = PATTERN_DIGITS[code % 3];
+    code = Math.floor(code / 3);
+  }
+
+  return pattern.join('');
 }
 
 function createPatternBuckets(guess, candidates, candidateWeights) {
-  const buckets = new Map();
+  const counts = new Array(PATTERN_COUNT).fill(0);
+  const weights = new Array(PATTERN_COUNT).fill(0);
+  const codes = [];
 
-  for (const candidate of candidates) {
-    const key = patternKey(guess, candidate);
-    const weight = candidateWeights.get(candidate) || 1;
-    const bucket = buckets.get(key) || { count: 0, weight: 0 };
+  for (let index = 0; index < candidates.length; index += 1) {
+    const code = patternCode(guess, candidates[index]);
+    const weight = candidateWeights[index] || 1;
 
-    bucket.count += 1;
-    bucket.weight += weight;
-    buckets.set(key, bucket);
+    if (counts[code] === 0) {
+      codes.push(code);
+    }
+    counts[code] += 1;
+    weights[code] += weight;
   }
 
-  return buckets;
+  return { codes, counts, weights };
 }
 
 function metricsFromBuckets(buckets, totalWeight) {
@@ -194,13 +277,16 @@ function metricsFromBuckets(buckets, totalWeight) {
   let minBucketSize = Infinity;
   let maxBucketSize = 0;
 
-  for (const bucket of buckets.values()) {
-    const probability = bucket.weight / totalWeight;
+  for (const code of buckets.codes) {
+    const count = buckets.counts[code];
+    const weight = buckets.weights[code];
+    const probability = weight / totalWeight;
+
     entropy -= probability * Math.log2(probability);
-    expectedRemaining += probability * bucket.count;
-    expectedWeightedRemaining += probability * bucket.weight;
-    minBucketSize = Math.min(minBucketSize, bucket.count);
-    maxBucketSize = Math.max(maxBucketSize, bucket.count);
+    expectedRemaining += probability * count;
+    expectedWeightedRemaining += probability * weight;
+    minBucketSize = Math.min(minBucketSize, count);
+    maxBucketSize = Math.max(maxBucketSize, count);
   }
 
   return {
@@ -209,8 +295,25 @@ function metricsFromBuckets(buckets, totalWeight) {
     expectedWeightedRemaining,
     minBucketSize,
     maxBucketSize,
-    patternCount: buckets.size,
+    patternCount: buckets.codes.length,
   };
+}
+
+function computeGuessMetricsForPreparedPool(guess, candidates, candidateWeights, totalWeight) {
+  const normalizedGuess = normalizeWord(guess);
+  if (!normalizedGuess || candidates.length === 0) {
+    return {
+      entropy: 0,
+      expectedRemaining: 0,
+      expectedWeightedRemaining: 0,
+      minBucketSize: 0,
+      maxBucketSize: 0,
+      patternCount: 0,
+    };
+  }
+
+  const buckets = createPatternBuckets(normalizedGuess, candidates, candidateWeights);
+  return metricsFromBuckets(buckets, totalWeight);
 }
 
 export function computeGuessMetrics(guess, candidates, frequencyConfig = {}) {
@@ -228,7 +331,7 @@ export function computeGuessMetrics(guess, candidates, frequencyConfig = {}) {
   }
 
   const candidateWeights = buildCandidateWeights(normalizedCandidates, frequencyConfig);
-  const totalWeight = [...candidateWeights.values()].reduce((sum, weight) => sum + weight, 0);
+  const totalWeight = candidateWeights.reduce((sum, weight) => sum + weight, 0);
   const buckets = createPatternBuckets(normalizedGuess, normalizedCandidates, candidateWeights);
 
   return metricsFromBuckets(buckets, totalWeight);
@@ -254,14 +357,22 @@ function cacheKeyForCandidates(candidates) {
 }
 
 function rankWords(candidates, rankingWords, frequencyConfig, rankCache) {
-  const key = rankCache ? cacheKeyForCandidates(candidates) : null;
+  const normalizedCandidates = normalizeWordList(candidates);
+  const key = rankCache ? cacheKeyForCandidates(normalizedCandidates) : null;
   if (key && rankCache.has(key)) return rankCache.get(key);
 
-  const candidateSet = new Set(candidates);
+  const candidateSet = new Set(normalizedCandidates);
+  const candidateWeights = buildCandidateWeights(normalizedCandidates, frequencyConfig);
+  const totalWeight = candidateWeights.reduce((sum, weight) => sum + weight, 0);
   const ranking = rankingWords
     .map((word) => ({
       word,
-      ...computeGuessMetrics(word, candidates, frequencyConfig),
+      ...computeGuessMetricsForPreparedPool(
+        word,
+        normalizedCandidates,
+        candidateWeights,
+        totalWeight,
+      ),
     }))
     .sort(compareRankingEntries(candidateSet));
 
@@ -357,13 +468,13 @@ function formatAnalysisRow({
 }
 
 function nextCandidatePool(guess, targetWord, remainingCandidates) {
-  const observedPattern = patternKey(guess, targetWord);
+  const observedCode = patternCode(guess, targetWord);
   const candidates = remainingCandidates.filter(
-    (candidate) => patternKey(guess, candidate) === observedPattern,
+    (candidate) => patternCode(guess, candidate) === observedCode,
   );
 
   return {
-    observedPattern,
+    observedPattern: patternKey(guess, targetWord),
     candidates: candidates.length > 0 ? candidates : [targetWord],
     rawRemainingAfter: candidates.length,
   };
@@ -397,14 +508,16 @@ export function solveWithGreedyBot(targetWord, options = {}) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const remainingBefore = remainingCandidates.length;
+    const ranking = remainingBefore === 1
+      ? []
+      : rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache);
     const guess = remainingBefore === 1
       ? remainingCandidates[0]
       : bestUnusedGuess(
-        rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache),
+        ranking,
         usedGuesses,
         normalizedTarget,
       );
-    const ranking = rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache);
     const metrics = ranking.find((entry) => entry.word === guess) ||
       { word: guess, ...computeGuessMetrics(guess, remainingCandidates, frequencyConfig) };
     const { observedPattern, candidates, rawRemainingAfter } = nextCandidatePool(

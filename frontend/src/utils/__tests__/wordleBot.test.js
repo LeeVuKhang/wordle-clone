@@ -6,6 +6,19 @@ import {
   selectLatestCompletedDailyGame,
   solveWithGreedyBot,
 } from '../wordleBot.js';
+import { compareWord } from '../compareWord.js';
+
+function compareWordPattern(guess, targetWord) {
+  const patternMap = {
+    correct: 'G',
+    present: 'Y',
+    absent: 'B',
+  };
+
+  return compareWord(guess, targetWord)
+    .map((cell) => patternMap[cell.status])
+    .join('');
+}
 
 describe('selectLatestCompletedDailyGame', () => {
   it('returns the most recent completed game with usable guesses and target word', () => {
@@ -67,6 +80,20 @@ describe('analyzeCompletedDailyGame', () => {
       rareLetters: [],
     })).toBe(4);
     expect(weightedMetrics.entropy).toBeLessThan(equalMetrics.entropy);
+  });
+
+  it('partitions duplicate-letter candidates the same way as compareWord', () => {
+    const candidates = ['EERIE', 'ELATE', 'SPEED', 'ABIED', 'EVADE'];
+    const expectedPatternCount = new Set(
+      candidates.map((candidate) => compareWordPattern('SPEED', candidate)),
+    ).size;
+    const metrics = computeGuessMetrics('SPEED', candidates, {
+      commonWords: [],
+      duplicateLetterPenalty: 1,
+      rareLetters: [],
+    });
+
+    expect(metrics.patternCount).toBe(expectedPatternCount);
   });
 
   it('returns null for missing target words or guesses', () => {
