@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ArrowLeft, Trophy, X } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
+import WordleBotPanel from './WordleBotPanel.jsx';
 import { computeDailyBadgeCallouts } from '../utils/badges.js';
 import './ResultsPanel.css';
 
@@ -55,6 +56,22 @@ const ResultsPanel = ({
     submittedWords,
     targetWord,
   ]);
+  const wordleBotGame = useMemo(() => {
+    const status = gameStatus === 'WON' || gameStatus === 'LOST' ? gameStatus : null;
+    if (!status || !targetWord || !Array.isArray(submittedWords) || submittedWords.length === 0) {
+      return null;
+    }
+
+    return {
+      id: gameId,
+      gameDate,
+      completedAt: gameDate,
+      status,
+      attempts,
+      targetWord,
+      guesses: submittedWords,
+    };
+  }, [attempts, gameDate, gameId, gameStatus, submittedWords, targetWord]);
 
   if (!isOpen) return null;
 
@@ -197,6 +214,12 @@ const ResultsPanel = ({
             );
           })}
         </section>
+
+        <WordleBotPanel
+          game={wordleBotGame}
+          variant="results"
+          unavailableMessage="Finish the daily puzzle to unlock Wordle Bot analysis."
+        />
 
         <div className="results-share-section">
           <ShareButton

@@ -40,8 +40,7 @@
 }
 
 .stats-header button,
-.stats-error button,
-.stats-wordlebot-banner button {
+.stats-error button {
   min-height: 36px;
   display: inline-flex;
   align-items: center;
@@ -59,22 +58,10 @@
 }
 
 .stats-header button:hover,
-.stats-error button:hover,
-.stats-wordlebot-banner button:hover {
+.stats-error button:hover {
   border-color: var(--color-border-strong);
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
-}
-
-.stats-wordlebot-banner button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.stats-wordlebot-banner button:disabled:hover {
-  border-color: var(--color-border);
-  background: var(--color-panel-raised);
-  color: var(--color-text-secondary);
 }
 
 .stats-empty,
@@ -160,8 +147,7 @@
 }
 
 .stats-badges-section,
-.stats-distribution,
-.stats-wordlebot-banner {
+.stats-distribution {
   border-top: 1px solid var(--color-border);
   padding-top: 20px;
 }
@@ -171,8 +157,7 @@
 }
 
 .stats-section-title h3,
-.stats-distribution h3,
-.stats-wordlebot-banner h3 {
+.stats-distribution h3 {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -263,230 +248,6 @@
   background: var(--color-correct);
 }
 
-.stats-wordlebot-banner {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  background: var(--color-panel-raised);
-}
-
-.stats-wordlebot-mark {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 28%, hsl(0 0% 100% / 0.28), transparent 32%),
-    linear-gradient(145deg, var(--color-info), var(--color-correct-strong));
-  color: var(--color-text-primary);
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.stats-wordlebot-banner h3 {
-  margin-bottom: 4px;
-  color: var(--color-text-primary);
-}
-
-.stats-wordlebot-banner p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.86rem;
-  font-weight: 700;
-  line-height: 1.38;
-}
-
-.stats-wordlebot-banner button {
-  white-space: nowrap;
-}
-
-.stats-wordlebot-banner--unavailable {
-  opacity: 0.84;
-}
-
-.stats-wordlebot-panel {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-  border-top: 1px solid var(--color-border);
-  padding-top: 14px;
-}
-
-.stats-wordlebot-loading,
-.stats-wordlebot-error {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.88rem;
-  font-weight: 750;
-  line-height: 1.42;
-}
-
-.stats-wordlebot-error {
-  color: var(--color-error);
-}
-
-.stats-wordlebot-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.stats-wordlebot-summary-grid div {
-  min-width: 0;
-  padding: 10px 8px;
-  border-right: 1px solid var(--color-border);
-  text-align: center;
-}
-
-.stats-wordlebot-summary-grid div:last-child {
-  border-right: 0;
-}
-
-.stats-wordlebot-summary-grid span,
-.stats-wordlebot-meter span,
-.stats-wordlebot-row-heading span,
-.stats-wordlebot-details dt {
-  color: var(--color-text-muted);
-  font-size: 0.66rem;
-  font-weight: 850;
-  text-transform: uppercase;
-}
-
-.stats-wordlebot-summary-grid strong {
-  display: block;
-  margin-top: 5px;
-  color: var(--color-text-primary);
-  font-family: var(--font-display);
-  font-size: 1.08rem;
-  font-weight: 850;
-  line-height: 1;
-}
-
-.stats-wordlebot-rounds {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.stats-wordlebot-row {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 11px;
-  border-top: 1px solid var(--color-border);
-  padding: 14px 0;
-}
-
-.stats-wordlebot-row:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-.stats-wordlebot-row:last-child {
-  padding-bottom: 0;
-}
-
-.stats-wordlebot-row-heading {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.stats-wordlebot-row-heading div {
-  min-width: 0;
-}
-
-.stats-wordlebot-row-heading strong {
-  display: block;
-  margin-top: 4px;
-  color: var(--color-text-primary);
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 850;
-  letter-spacing: 0;
-  line-height: 1;
-}
-
-.stats-wordlebot-row-heading > span {
-  flex: 0 0 auto;
-  color: var(--color-text-secondary);
-  text-align: right;
-}
-
-.stats-wordlebot-meters {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.stats-wordlebot-meter {
-  min-width: 0;
-}
-
-.stats-wordlebot-meter > div:first-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.stats-wordlebot-meter strong {
-  color: var(--color-text-primary);
-  font-size: 0.84rem;
-  font-weight: 850;
-}
-
-.stats-wordlebot-meter-track {
-  height: 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-absent) 34%, transparent);
-  overflow: hidden;
-}
-
-.stats-wordlebot-meter-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-correct);
-}
-
-.stats-wordlebot-details {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-}
-
-.stats-wordlebot-details div {
-  min-width: 0;
-}
-
-.stats-wordlebot-details dt {
-  margin-bottom: 4px;
-}
-
-.stats-wordlebot-details dd {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 0.84rem;
-  font-weight: 800;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
-}
-
 @media (max-width: 460px) {
   .stats-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -500,39 +261,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .stats-wordlebot-banner {
-    grid-template-columns: 40px minmax(0, 1fr);
-  }
-
-  .stats-wordlebot-banner button {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
-
-  .stats-wordlebot-summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stats-wordlebot-summary-grid div:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .stats-wordlebot-summary-grid div:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .stats-wordlebot-meters,
-  .stats-wordlebot-details {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-wordlebot-row-heading {
-    flex-direction: column;
-  }
-
-  .stats-wordlebot-row-heading > span {
-    text-align: left;
-  }
 }
 
 @keyframes stats-skeleton {

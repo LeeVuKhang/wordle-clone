@@ -1,5 +1,3 @@
-import PRACTICE_WORDS_TEXT from '../data/practiceWords.txt?raw';
-import VALID_GUESSES from '../data/validGuesses.json';
 import { compareWord } from './compareWord.js';
 
 const STATUS_PATTERN = {
@@ -8,15 +6,21 @@ const STATUS_PATTERN = {
   absent: 'B',
 };
 
-const DEFAULT_ANSWER_WORDS = normalizeWordList(PRACTICE_WORDS_TEXT.split(/\r?\n/));
-const DEFAULT_RANKING_WORDS = normalizeWordList(VALID_GUESSES);
+const DEFAULT_FREQUENCY_CONFIG = {
+  defaultWeight: 1,
+  commonWordWeight: 1.8,
+  rareLetterPenalty: 0.92,
+  duplicateLetterPenalty: 0.86,
+  commonWords: [],
+  rareLetters: ['J', 'Q', 'X', 'Z'],
+};
 
 function normalizeWord(word) {
   const normalized = String(word || '').trim().toUpperCase();
   return /^[A-Z]{5}$/.test(normalized) ? normalized : null;
 }
 
-function normalizeWordList(words) {
+export function normalizeWordList(words) {
   const seen = new Set();
   const normalizedWords = [];
 
@@ -31,16 +35,12 @@ function normalizeWordList(words) {
   return normalizedWords;
 }
 
-function optionWordList(words, fallback) {
+function optionWordList(words) {
   if (typeof words === 'string') {
     return normalizeWordList(words.split(/\r?\n/));
   }
 
-  if (Array.isArray(words)) {
-    return normalizeWordList(words);
-  }
-
-  return fallback;
+  return normalizeWordList(words);
 }
 
 function ensureWord(words, word) {
@@ -93,28 +93,95 @@ function normalizeCompletedGame(game) {
   };
 }
 
+function normalizeFrequencyConfig(config = {}) {
+  const merged = { ...DEFAULT_FREQUENCY_CONFIG, ...(config || {}) };
+
+  return {
+    ...merged,
+    defaultWeight: Number(merged.defaultWeight) > 0 ? Number(merged.defaultWeight) : 1,
+    commonWordWeight: Number(merged.commonWordWeight) > 0
+      ? Number(merged.commonWordWeight)
+      : DEFAULT_FREQUENCY_CONFIG.commonWordWeight,
+    rareLetterPenalty: Number(merged.rareLetterPenalty) > 0
+      ? Number(merged.rareLetterPenalty)
+      : DEFAULT_FREQUENCY_CONFIG.rareLetterPenalty,
+    duplicateLetterPenalty: Number(merged.duplicateLetterPenalty) > 0
+      ? Number(merged.duplicateLetterPenalty)
+      : DEFAULT_FREQUENCY_CONFIG.duplicateLetterPenalty,
+    commonWords: new Set(normalizeWordList(merged.commonWords || [])),
+    rareLetters: new Set(
+      Array.isArray(merged.rareLetters)
+        ? merged.rareLetters.map((letter) => String(letter || '').toUpperCase()).filter(Boolean)
+        : DEFAULT_FREQUENCY_CONFIG.rareLetters,
+    ),
+  };
+}
+
+export function getWordWeight(word, frequencyConfig = {}) {
+  const normalized = normalizeWord(word);
+  if (!normalized) return 0;
+
+  const config = normalizeFrequencyConfig(frequencyConfig);
+  const letters = normalized.split('');
+  const uniqueLetters = new Set(letters);
+  let weight = config.defaultWeight;
+
+  if (config.commonWords.has(normalized)) {
+    weight *= config.commonWordWeight;
+  }
+
+  uniqueLetters.forEach((letter) => {
+    if (config.rareLetters.has(letter)) {
+      weight *= config.rareLetterPenalty;
+    }
+  });
+
+  const duplicateCount = letters.length - uniqueLetters.size;
+  if (duplicateCount > 0) {
+    weight *= config.duplicateLetterPenalty ** duplicateCount;
+  }
+
+  return Math.max(0.01, weight);
+}
+
+function buildCandidateWeights(candidates, frequencyConfig) {
+  const weights = new Map();
+
+  candidates.forEach((word) => {
+    weights.set(word, getWordWeight(word, frequencyConfig));
+  });
+
+  return weights;
+}
+
 function patternKey(guess, targetWord) {
   return compareWord(guess, targetWord)
     .map((cell) => STATUS_PATTERN[cell.status] || 'B')
     .join('');
 }
 
-function createPatternBuckets(guess, candidates) {
+function createPatternBuckets(guess, candidates, candidateWeights) {
   const buckets = new Map();
 
   for (const candidate of candidates) {
     const key = patternKey(guess, candidate);
-    buckets.set(key, (buckets.get(key) || 0) + 1);
+    const weight = candidateWeights.get(candidate) || 1;
+    const bucket = buckets.get(key) || { count: 0, weight: 0 };
+
+    bucket.count += 1;
+    bucket.weight += weight;
+    buckets.set(key, bucket);
   }
 
   return buckets;
 }
 
-function metricsFromBuckets(buckets, total) {
-  if (total <= 0) {
+function metricsFromBuckets(buckets, totalWeight) {
+  if (totalWeight <= 0) {
     return {
       entropy: 0,
       expectedRemaining: 0,
+      expectedWeightedRemaining: 0,
       minBucketSize: 0,
       maxBucketSize: 0,
       patternCount: 0,
@@ -123,29 +190,48 @@ function metricsFromBuckets(buckets, total) {
 
   let entropy = 0;
   let expectedRemaining = 0;
+  let expectedWeightedRemaining = 0;
   let minBucketSize = Infinity;
   let maxBucketSize = 0;
 
-  for (const count of buckets.values()) {
-    const probability = count / total;
+  for (const bucket of buckets.values()) {
+    const probability = bucket.weight / totalWeight;
     entropy -= probability * Math.log2(probability);
-    expectedRemaining += probability * count;
-    minBucketSize = Math.min(minBucketSize, count);
-    maxBucketSize = Math.max(maxBucketSize, count);
+    expectedRemaining += probability * bucket.count;
+    expectedWeightedRemaining += probability * bucket.weight;
+    minBucketSize = Math.min(minBucketSize, bucket.count);
+    maxBucketSize = Math.max(maxBucketSize, bucket.count);
   }
 
   return {
     entropy,
     expectedRemaining,
+    expectedWeightedRemaining,
     minBucketSize,
     maxBucketSize,
     patternCount: buckets.size,
   };
 }
 
-function computeGuessMetrics(guess, candidates) {
-  const buckets = createPatternBuckets(guess, candidates);
-  return metricsFromBuckets(buckets, candidates.length);
+export function computeGuessMetrics(guess, candidates, frequencyConfig = {}) {
+  const normalizedGuess = normalizeWord(guess);
+  const normalizedCandidates = normalizeWordList(candidates);
+  if (!normalizedGuess || normalizedCandidates.length === 0) {
+    return {
+      entropy: 0,
+      expectedRemaining: 0,
+      expectedWeightedRemaining: 0,
+      minBucketSize: 0,
+      maxBucketSize: 0,
+      patternCount: 0,
+    };
+  }
+
+  const candidateWeights = buildCandidateWeights(normalizedCandidates, frequencyConfig);
+  const totalWeight = [...candidateWeights.values()].reduce((sum, weight) => sum + weight, 0);
+  const buckets = createPatternBuckets(normalizedGuess, normalizedCandidates, candidateWeights);
+
+  return metricsFromBuckets(buckets, totalWeight);
 }
 
 function compareRankingEntries(candidateSet) {
@@ -163,15 +249,24 @@ function compareRankingEntries(candidateSet) {
   };
 }
 
-function rankWords(candidates, rankingWords) {
-  const candidateSet = new Set(candidates);
+function cacheKeyForCandidates(candidates) {
+  return candidates.join('|');
+}
 
-  return rankingWords
+function rankWords(candidates, rankingWords, frequencyConfig, rankCache) {
+  const key = rankCache ? cacheKeyForCandidates(candidates) : null;
+  if (key && rankCache.has(key)) return rankCache.get(key);
+
+  const candidateSet = new Set(candidates);
+  const ranking = rankingWords
     .map((word) => ({
       word,
-      ...computeGuessMetrics(word, candidates),
+      ...computeGuessMetrics(word, candidates, frequencyConfig),
     }))
     .sort(compareRankingEntries(candidateSet));
+
+  if (key) rankCache.set(key, ranking);
+  return ranking;
 }
 
 function clamp(value, min, max) {
@@ -224,6 +319,173 @@ function gameListFromStats(stats) {
   return [];
 }
 
+function formatAnalysisRow({
+  attempt,
+  guess,
+  targetWord,
+  remainingBefore,
+  remainingAfter,
+  observedPattern,
+  playerRank,
+  rankingLength,
+  playerMetrics,
+  luckScore,
+  botChoice,
+}) {
+  return {
+    attempt,
+    guess,
+    pattern: observedPattern,
+    remainingBefore,
+    remainingAfter,
+    eliminated: remainingBefore - remainingAfter,
+    eliminatedPercent: remainingBefore === 0
+      ? 0
+      : round(((remainingBefore - remainingAfter) / remainingBefore) * 100, 1),
+    entropy: round(playerMetrics.entropy, 2),
+    weightedEntropy: round(playerMetrics.entropy, 2),
+    expectedRemaining: round(playerMetrics.expectedRemaining, 1),
+    rank: playerRank,
+    rankTotal: rankingLength,
+    skillScore: skillScoreForRank(playerRank, rankingLength),
+    luckScore,
+    botGuess: botChoice?.word || null,
+    botEntropy: botChoice ? round(botChoice.entropy, 2) : null,
+    botExpectedRemaining: botChoice ? round(botChoice.expectedRemaining, 1) : null,
+    isAnswer: guess === targetWord,
+  };
+}
+
+function nextCandidatePool(guess, targetWord, remainingCandidates) {
+  const observedPattern = patternKey(guess, targetWord);
+  const candidates = remainingCandidates.filter(
+    (candidate) => patternKey(guess, candidate) === observedPattern,
+  );
+
+  return {
+    observedPattern,
+    candidates: candidates.length > 0 ? candidates : [targetWord],
+    rawRemainingAfter: candidates.length,
+  };
+}
+
+function bestUnusedGuess(ranking, usedGuesses, targetWord) {
+  if (ranking.length === 0) return targetWord;
+  return ranking.find((entry) => !usedGuesses.has(entry.word))?.word || targetWord;
+}
+
+export function solveWithGreedyBot(targetWord, options = {}) {
+  const normalizedTarget = normalizeWord(targetWord);
+  if (!normalizedTarget) {
+    return {
+      botPath: [],
+      botAttempts: 0,
+      botStatus: 'LOST',
+    };
+  }
+
+  const answerWords = ensureWord(optionWordList(options.answerWords), normalizedTarget);
+  const rankingWords = ensureWord(optionWordList(options.rankingWords), normalizedTarget);
+  const frequencyConfig = options.frequencyConfig || {};
+  const rankCache = options.rankCache;
+  const maxAttempts = Number.isFinite(Number(options.maxAttempts))
+    ? Number(options.maxAttempts)
+    : 6;
+  const usedGuesses = new Set();
+  const botPath = [];
+  let remainingCandidates = answerWords;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const remainingBefore = remainingCandidates.length;
+    const guess = remainingBefore === 1
+      ? remainingCandidates[0]
+      : bestUnusedGuess(
+        rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache),
+        usedGuesses,
+        normalizedTarget,
+      );
+    const ranking = rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache);
+    const metrics = ranking.find((entry) => entry.word === guess) ||
+      { word: guess, ...computeGuessMetrics(guess, remainingCandidates, frequencyConfig) };
+    const { observedPattern, candidates, rawRemainingAfter } = nextCandidatePool(
+      guess,
+      normalizedTarget,
+      remainingCandidates,
+    );
+
+    usedGuesses.add(guess);
+    botPath.push({
+      attempt,
+      guess,
+      pattern: observedPattern,
+      remainingBefore,
+      remainingAfter: rawRemainingAfter,
+      entropy: round(metrics.entropy, 2),
+      weightedEntropy: round(metrics.entropy, 2),
+      expectedRemaining: round(metrics.expectedRemaining, 1),
+      isAnswer: guess === normalizedTarget,
+    });
+
+    if (guess === normalizedTarget) {
+      return {
+        botPath,
+        botAttempts: attempt,
+        botStatus: 'WON',
+      };
+    }
+
+    remainingCandidates = candidates;
+  }
+
+  return {
+    botPath,
+    botAttempts: botPath.length,
+    botStatus: 'LOST',
+  };
+}
+
+function verdictFor({ playerSolved, playerAttempts, botStatus, botAttempts }) {
+  if (playerSolved && botStatus !== 'WON') {
+    return {
+      verdict: 'PLAYER_WIN',
+      verdictText: 'You beat the bot',
+    };
+  }
+
+  if (!playerSolved && botStatus === 'WON') {
+    return {
+      verdict: 'BOT_WIN',
+      verdictText: 'Bot wins',
+    };
+  }
+
+  if (!playerSolved && botStatus !== 'WON') {
+    return {
+      verdict: 'TIE',
+      verdictText: 'Both missed it',
+    };
+  }
+
+  if (playerAttempts < botAttempts) {
+    return {
+      verdict: 'PLAYER_WIN',
+      verdictText: 'You beat the bot',
+    };
+  }
+
+  if (playerAttempts > botAttempts) {
+    return {
+      verdict: 'BOT_WIN',
+      verdictText: 'Bot wins',
+    };
+  }
+
+  return {
+    verdict: 'TIE',
+    verdictText: 'Tie game',
+  };
+}
+
 export function selectLatestCompletedDailyGame(stats) {
   let latest = null;
 
@@ -248,60 +510,61 @@ export function analyzeCompletedDailyGame(game, options = {}) {
   const normalizedGame = normalizeCompletedGame(game);
   if (!normalizedGame) return null;
 
-  const answerWords = ensureWord(
-    optionWordList(options.answerWords, DEFAULT_ANSWER_WORDS),
-    normalizedGame.targetWord,
-  );
-  const rankingWords = optionWordList(options.rankingWords, DEFAULT_RANKING_WORDS);
+  const answerWords = ensureWord(optionWordList(options.answerWords), normalizedGame.targetWord);
+  const rankingWords = ensureWord(optionWordList(options.rankingWords), normalizedGame.targetWord);
+  const frequencyConfig = options.frequencyConfig || {};
+  const rankCache = options.rankCache;
   let remainingCandidates = answerWords;
   const rows = [];
 
   for (const guess of normalizedGame.guesses) {
     const remainingBefore = remainingCandidates.length;
-    const ranking = rankWords(remainingCandidates, rankingWords);
+    const ranking = rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache);
     const botChoice = ranking[0] || null;
     const playerRankIndex = ranking.findIndex((entry) => entry.word === guess);
     const playerRank = playerRankIndex >= 0 ? playerRankIndex + 1 : null;
     const playerMetrics = playerRank
       ? ranking[playerRankIndex]
-      : { word: guess, ...computeGuessMetrics(guess, remainingCandidates) };
-    const observedPattern = patternKey(guess, normalizedGame.targetWord);
-    const nextCandidates = remainingCandidates.filter(
-      (candidate) => patternKey(guess, candidate) === observedPattern,
+      : { word: guess, ...computeGuessMetrics(guess, remainingCandidates, frequencyConfig) };
+    const { observedPattern, candidates, rawRemainingAfter } = nextCandidatePool(
+      guess,
+      normalizedGame.targetWord,
+      remainingCandidates,
     );
-    const remainingAfter = nextCandidates.length;
-    const luckScore = luckScoreForOutcome(playerMetrics, remainingAfter);
 
-    rows.push({
+    rows.push(formatAnalysisRow({
       attempt: rows.length + 1,
       guess,
-      pattern: observedPattern,
+      targetWord: normalizedGame.targetWord,
       remainingBefore,
-      remainingAfter,
-      eliminated: remainingBefore - remainingAfter,
-      eliminatedPercent: remainingBefore === 0
-        ? 0
-        : round(((remainingBefore - remainingAfter) / remainingBefore) * 100, 1),
-      entropy: round(playerMetrics.entropy, 2),
-      expectedRemaining: round(playerMetrics.expectedRemaining, 1),
-      rank: playerRank,
-      rankTotal: ranking.length,
-      skillScore: skillScoreForRank(playerRank, ranking.length),
-      luckScore,
-      botGuess: botChoice?.word || null,
-      botEntropy: botChoice ? round(botChoice.entropy, 2) : null,
-      botExpectedRemaining: botChoice ? round(botChoice.expectedRemaining, 1) : null,
-      isAnswer: guess === normalizedGame.targetWord,
-    });
+      remainingAfter: rawRemainingAfter,
+      observedPattern,
+      playerRank,
+      rankingLength: ranking.length,
+      playerMetrics,
+      luckScore: luckScoreForOutcome(playerMetrics, rawRemainingAfter),
+      botChoice,
+    }));
 
-    remainingCandidates = nextCandidates.length > 0
-      ? nextCandidates
-      : [normalizedGame.targetWord];
-
+    remainingCandidates = candidates;
     if (guess === normalizedGame.targetWord) break;
   }
 
   const finalRow = rows[rows.length - 1] || null;
+  const isSolved = rows.some((row) => row.isAnswer);
+  const botResult = solveWithGreedyBot(normalizedGame.targetWord, {
+    answerWords,
+    rankingWords,
+    frequencyConfig,
+    rankCache,
+    maxAttempts: 6,
+  });
+  const verdict = verdictFor({
+    playerSolved: isSolved,
+    playerAttempts: rows.length,
+    botStatus: botResult.botStatus,
+    botAttempts: botResult.botAttempts,
+  });
 
   return {
     ...normalizedGame,
@@ -310,9 +573,13 @@ export function analyzeCompletedDailyGame(game, options = {}) {
     initialCandidateCount: answerWords.length,
     rankingWordCount: rankingWords.length,
     finalRemaining: finalRow?.remainingAfter ?? answerWords.length,
-    isSolved: rows.some((row) => row.isAnswer),
+    isSolved,
     averageSkill: average(rows.slice(1).map((row) => row.skillScore)),
     averageLuck: average(rows.map((row) => row.luckScore)),
     rows,
+    botPath: botResult.botPath,
+    botAttempts: botResult.botAttempts,
+    botStatus: botResult.botStatus,
+    ...verdict,
   };
 }

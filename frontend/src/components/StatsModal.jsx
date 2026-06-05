@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowClockwise,
   ChartBar,
@@ -6,80 +6,15 @@ import {
   X,
 } from '@phosphor-icons/react';
 import Badge from './Badge';
+import WordleBotPanel from './WordleBotPanel.jsx';
 import { computeBadges } from '../utils/badges.js';
-import {
-  analyzeCompletedDailyGame,
-  selectLatestCompletedDailyGame,
-} from '../utils/wordleBot.js';
+import { selectLatestCompletedDailyGame } from '../utils/wordleBot.js';
 import './PanelModal.css';
 import './StatsModal.css';
-
-const EMPTY_WORDLEBOT_STATE = {
-  status: 'idle',
-  isExpanded: false,
-  gameKey: null,
-  analysis: null,
-  error: null,
-};
 
 function formatWinPercentage(value) {
   const rounded = Number(value || 0).toFixed(1);
   return rounded.endsWith('.0') ? rounded.slice(0, -2) : rounded;
-}
-
-function formatScore(value) {
-  return Number.isFinite(value) ? String(Math.round(value)) : '--';
-}
-
-function formatNumber(value, digits = 0) {
-  if (!Number.isFinite(value)) return '--';
-  return Number(value).toLocaleString(undefined, {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: 0,
-  });
-}
-
-function formatRank(row) {
-  if (!row?.rank || !row?.rankTotal) return 'Not ranked';
-  return `#${row.rank.toLocaleString()} of ${row.rankTotal.toLocaleString()}`;
-}
-
-function formatGameDate(game) {
-  const value = game?.gameDate || game?.completedAt;
-  if (!value) return 'latest daily';
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'latest daily';
-
-  return date.toISOString().slice(0, 10);
-}
-
-function wordleBotGameKey(game) {
-  if (!game) return null;
-
-  return [
-    game.id || game.gameId || '',
-    game.gameDate || '',
-    game.completedAt || '',
-    game.targetWord || game.word || game.answer || '',
-    Array.isArray(game.guesses) ? game.guesses.join(',') : '',
-  ].join('|');
-}
-
-function ScoreMeter({ label, value }) {
-  const score = Number.isFinite(value) ? Math.max(0, Math.min(99, value)) : 0;
-
-  return (
-    <div className="stats-wordlebot-meter">
-      <div>
-        <span>{label}</span>
-        <strong>{formatScore(value)}</strong>
-      </div>
-      <div className="stats-wordlebot-meter-track" aria-hidden="true">
-        <span style={{ width: `${score}%` }} />
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -98,8 +33,6 @@ const StatsModal = ({
   highlightAttempt,
 }) => {
   const [selectedBadgeId, setSelectedBadgeId] = useState(null);
-  const [wordleBotState, setWordleBotState] = useState(EMPTY_WORDLEBOT_STATE);
-  const wordleBotTimerRef = useRef(null);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -110,22 +43,12 @@ const StatsModal = ({
   useEffect(() => {
     if (!isOpen) {
       setSelectedBadgeId(null);
-      window.clearTimeout(wordleBotTimerRef.current);
-      wordleBotTimerRef.current = null;
-      setWordleBotState(EMPTY_WORDLEBOT_STATE);
     }
   }, [isOpen]);
 
   useEffect(() => {
     setSelectedBadgeId(null);
-    window.clearTimeout(wordleBotTimerRef.current);
-    wordleBotTimerRef.current = null;
-    setWordleBotState(EMPTY_WORDLEBOT_STATE);
   }, [stats]);
-
-  useEffect(() => () => {
-    window.clearTimeout(wordleBotTimerRef.current);
-  }, []);
 
   const badges = useMemo(() => computeBadges(stats), [stats]);
   const wordleBotGame = useMemo(() => selectLatestCompletedDailyGame(stats), [stats]);
@@ -139,54 +62,6 @@ const StatsModal = ({
     typeof error === 'string' &&
     /auth|unauthorized|refresh token/i.test(error);
   const displayError = error && !isAuthError ? error : null;
-  const canAnalyzeWordleBot = Boolean(wordleBotGame);
-  const wordleBotGameLabel = formatGameDate(wordleBotGame);
-
-  const handleWordleBotClick = () => {
-    if (!wordleBotGame) return;
-
-    const gameKey = wordleBotGameKey(wordleBotGame);
-
-    if (wordleBotState.analysis && wordleBotState.gameKey === gameKey) {
-      setWordleBotState((current) => ({
-        ...current,
-        isExpanded: !current.isExpanded,
-      }));
-      return;
-    }
-
-    window.clearTimeout(wordleBotTimerRef.current);
-    setWordleBotState({
-      ...EMPTY_WORDLEBOT_STATE,
-      status: 'loading',
-      isExpanded: true,
-      gameKey,
-    });
-
-    wordleBotTimerRef.current = window.setTimeout(() => {
-      try {
-        const analysis = analyzeCompletedDailyGame(wordleBotGame);
-
-        setWordleBotState({
-          status: analysis ? 'ready' : 'error',
-          isExpanded: true,
-          gameKey,
-          analysis,
-          error: analysis ? null : 'No completed daily game is ready for analysis.',
-        });
-      } catch (err) {
-        setWordleBotState({
-          status: 'error',
-          isExpanded: true,
-          gameKey,
-          analysis: null,
-          error: err?.message || 'Unable to analyze this daily game.',
-        });
-      } finally {
-        wordleBotTimerRef.current = null;
-      }
-    }, 0);
-  };
 
   return (
     <div className="panel-overlay stats-overlay" onClick={onClose}>
@@ -306,105 +181,7 @@ const StatsModal = ({
               })}
             </section>
 
-            <section
-              className={`stats-wordlebot-banner ${!canAnalyzeWordleBot ? 'stats-wordlebot-banner--unavailable' : ''}`}
-              aria-labelledby="stats-wordlebot-heading"
-            >
-              <div className="stats-wordlebot-mark" aria-hidden="true">WB</div>
-              <div>
-                <h3 id="stats-wordlebot-heading">Wordle Bot</h3>
-                <p>
-                  {canAnalyzeWordleBot
-                    ? `Analyze your ${wordleBotGameLabel} guesses against the full word list.`
-                    : 'Complete a daily game to unlock Wordle Bot analysis.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleWordleBotClick}
-                disabled={!canAnalyzeWordleBot || wordleBotState.status === 'loading'}
-              >
-                <ChartBar size={16} weight="bold" aria-hidden="true" />
-                <span>
-                  {wordleBotState.status === 'loading'
-                    ? 'Analyzing...'
-                    : wordleBotState.isExpanded
-                      ? 'Hide Wordle Bot'
-                      : 'Check Wordle Bot'}
-                </span>
-              </button>
-
-              {wordleBotState.isExpanded && (
-                <div className="stats-wordlebot-panel" aria-live="polite">
-                  {wordleBotState.status === 'loading' && (
-                    <p className="stats-wordlebot-loading" role="status">
-                      Analyzing the latest completed daily game...
-                    </p>
-                  )}
-
-                  {wordleBotState.status === 'error' && (
-                    <p className="stats-wordlebot-error">{wordleBotState.error}</p>
-                  )}
-
-                  {wordleBotState.status === 'ready' && wordleBotState.analysis && (
-                    <>
-                      <div className="stats-wordlebot-summary-grid">
-                        <div>
-                          <span>Avg Skill</span>
-                          <strong>{formatScore(wordleBotState.analysis.averageSkill)}</strong>
-                        </div>
-                        <div>
-                          <span>Avg Luck</span>
-                          <strong>{formatScore(wordleBotState.analysis.averageLuck)}</strong>
-                        </div>
-                        <div>
-                          <span>Guesses</span>
-                          <strong>{wordleBotState.analysis.guessCount}</strong>
-                        </div>
-                        <div>
-                          <span>Final Pool</span>
-                          <strong>{formatNumber(wordleBotState.analysis.finalRemaining)}</strong>
-                        </div>
-                      </div>
-
-                      <div className="stats-wordlebot-rounds" aria-label="Wordle Bot guess analysis">
-                        {wordleBotState.analysis.rows.map((row) => (
-                          <div className="stats-wordlebot-row" key={`${row.attempt}-${row.guess}`}>
-                            <div className="stats-wordlebot-row-heading">
-                              <div>
-                                <span>Guess {row.attempt}</span>
-                                <strong>{row.guess}</strong>
-                              </div>
-                              <span>{formatRank(row)}</span>
-                            </div>
-
-                            <div className="stats-wordlebot-meters">
-                              <ScoreMeter label="Skill" value={row.skillScore} />
-                              <ScoreMeter label="Luck" value={row.luckScore} />
-                            </div>
-
-                            <dl className="stats-wordlebot-details">
-                              <div>
-                                <dt>Remaining</dt>
-                                <dd>{formatNumber(row.remainingBefore)} to {formatNumber(row.remainingAfter)}</dd>
-                              </div>
-                              <div>
-                                <dt>Expected</dt>
-                                <dd>{formatNumber(row.expectedRemaining, 1)}</dd>
-                              </div>
-                              <div>
-                                <dt>Bot pick</dt>
-                                <dd>{row.botGuess || '--'}</dd>
-                              </div>
-                            </dl>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </section>
+            <WordleBotPanel game={wordleBotGame} variant="stats" />
           </div>
         )}
       </div>
