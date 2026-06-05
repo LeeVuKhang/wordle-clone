@@ -77,7 +77,10 @@ function App() {
   const previousDailyLoadingRef = useRef(true);
 
   const auth     = useAuth();
-  const daily    = useGame();
+  const daily    = useGame({
+    enabled: !auth.isLoading,
+    identityKey: auth.user?.id ?? 'guest',
+  });
   const practice = usePractice();
   const {
     stats,

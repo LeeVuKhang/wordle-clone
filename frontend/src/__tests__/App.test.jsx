@@ -6,6 +6,7 @@ const hookState = vi.hoisted(() => ({
   daily: {},
   practice: {},
   stats: {},
+  useGameOptions: null,
 }));
 
 vi.mock('../services/syncRetry.js', () => ({
@@ -17,7 +18,10 @@ vi.mock('../hooks/useAuth', () => ({
 }));
 
 vi.mock('../hooks/useGame', () => ({
-  useGame: () => hookState.daily,
+  useGame: (options) => {
+    hookState.useGameOptions = options;
+    return hookState.daily;
+  },
 }));
 
 vi.mock('../hooks/usePractice', () => ({
@@ -90,6 +94,7 @@ describe('App daily completion flow', () => {
       startSession: vi.fn(),
     });
     hookState.stats = createStatsState();
+    hookState.useGameOptions = null;
   });
 
   afterEach(() => {
@@ -150,5 +155,40 @@ describe('App daily completion flow', () => {
     expect(screen.getByText('Practice Win Modal')).toBeInTheDocument();
     expect(screen.queryByText('Daily Results Panel')).not.toBeInTheDocument();
     expect(hookState.practice.showToast).not.toHaveBeenCalled();
+  });
+
+  it('keeps the daily game disabled while auth is bootstrapping', () => {
+    hookState.auth = {
+      ...hookState.auth,
+      isLoading: true,
+    };
+
+    render(<App />);
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(hookState.useGameOptions).toEqual({
+      enabled: false,
+      identityKey: 'guest',
+    });
+  });
+
+  it('passes the authenticated user identity to the daily game hook after bootstrap', () => {
+    hookState.auth = {
+      ...hookState.auth,
+      user: {
+        id: 'user-1',
+        email: 'player@example.com',
+        username: 'Player',
+      },
+      isLoading: false,
+    };
+
+    render(<App />);
+
+    expect(hookState.useGameOptions).toEqual({
+      enabled: true,
+      identityKey: 'user-1',
+    });
+    expect(screen.getByText('Player')).toBeInTheDocument();
   });
 });

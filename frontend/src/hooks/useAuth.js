@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { authApi } from '../services/api.js';
+import { authApi, setAuthenticatedSession } from '../services/api.js';
 import { getGuestUuid, clearGuestUuid } from '../services/guestStorage.js';
 
 export function useAuth() {
@@ -25,10 +25,26 @@ export function useAuth() {
 
   // ── Bootstrap: check if already authenticated ────────────────────────────
   useEffect(() => {
+    let isActive = true;
+
     authApi.getMe()
-      .then((res) => setUser(res.data))
-      .catch(() => setUser(null))
-      .finally(() => setIsLoading(false));
+      .then((res) => {
+        if (!isActive) return;
+        setAuthenticatedSession(true);
+        setUser(res.data);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setAuthenticatedSession(false);
+        setUser(null);
+      })
+      .finally(() => {
+        if (isActive) setIsLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // ── Google OAuth login ────────────────────────────────────────────────────
@@ -37,6 +53,7 @@ export function useAuth() {
     setIsLoading(true);
     try {
       const res = await authApi.googleLogin(code, redirectUri);
+      setAuthenticatedSession(true);
       setUser(res.data.user);
       // Trigger guest data merge immediately after login (Task 7.7)
       const mergeResult = await triggerMerge();
@@ -76,6 +93,7 @@ export function useAuth() {
     try {
       await authApi.logout();
     } finally {
+      setAuthenticatedSession(false);
       setUser(null);
     }
   }, []);

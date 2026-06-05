@@ -13,7 +13,7 @@ import { enqueueSyncRetry } from '../services/syncRetry.js';
 const MAX_ATTEMPTS = 6;
 const SYNC_DEBOUNCE_MS = 500;
 
-export function useGame() {
+export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   const [gameId, setGameId] = useState(null);
   const [targetWord, setTargetWord] = useState('');
   const [guessResults, setGuessResults] = useState([]);
@@ -23,11 +23,13 @@ export function useGame() {
   const [gameStatus, setGameStatus] = useState('PLAYING');
   const [attempts, setAttempts] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedIdentityKey, setLoadedIdentityKey] = useState(null);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
 
   const syncTimer = useRef(null);
   const gameIdRef = useRef(null);
+  const loadRequestId = useRef(0);
 
   const showToast = useCallback((message, type = 'info') => {
     setToast({ message, type });
@@ -36,12 +38,32 @@ export function useGame() {
 
   const isProcessingRef = useRef(false);
 
+  const resetGameState = useCallback(() => {
+    setGameId(null);
+    setTargetWord('');
+    setGuessResults([]);
+    setSubmittedWords([]);
+    setCurrentGuess('');
+    setKeyboardStatus({});
+    setGameStatus('PLAYING');
+    setAttempts(0);
+    setLoadedIdentityKey(null);
+    setError(null);
+    gameIdRef.current = null;
+    isProcessingRef.current = false;
+  }, []);
+
   // Load daily game (Task 8.3)
   const loadGame = useCallback(async () => {
+    if (!enabled) return null;
+
+    const requestId = ++loadRequestId.current;
     setIsLoading(true);
     setError(null);
     try {
       const res = await gameApi.getToday();
+      if (requestId !== loadRequestId.current) return null;
+
       const data = res.data;
       const word = atob(data.word);
       setTargetWord(word);
@@ -49,6 +71,7 @@ export function useGame() {
       gameIdRef.current = data.id;
       setGameStatus(data.status);
       setAttempts(data.attempts);
+      setLoadedIdentityKey(identityKey);
       setCurrentGuess('');
 
       // Reconcile server state with offline fallback (R9)
@@ -74,15 +97,25 @@ export function useGame() {
         clearOfflineState();
       }
     } catch (err) {
+      if (requestId !== loadRequestId.current) return null;
+      setLoadedIdentityKey(identityKey);
       setError(err.response?.data?.error?.message || "Failed to load today's game");
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestId.current) setIsLoading(false);
     }
-  }, [showToast]);
+    return null;
+  }, [enabled, identityKey, showToast]);
 
   useEffect(() => {
+    if (!enabled) return undefined;
+
+    resetGameState();
     loadGame();
-  }, [loadGame]);
+
+    return () => {
+      loadRequestId.current += 1;
+    };
+  }, [enabled, identityKey, loadGame, resetGameState]);
 
   // Sync to server (Task 8.5)
   const syncToServer = useCallback((id, words, status) => {
@@ -144,10 +177,12 @@ export function useGame() {
     else if (/^[A-Z]$/.test(key)) handleLetter(key);
   }, [handleEnter, handleDelete, handleLetter]);
 
+  const isGameLoading = isLoading || (enabled && loadedIdentityKey !== identityKey);
+
   return {
     gameId, targetWord, guessResults, submittedWords,
     currentGuess, keyboardStatus, gameStatus, attempts,
-    isLoading, error, toast, showToast, handleKeyPress,
+    isLoading: isGameLoading, error, toast, showToast, handleKeyPress,
     reloadGame: loadGame,
   };
 }

@@ -3,7 +3,7 @@
  *
  * WBS Task 8.1
  * - withCredentials: true  -> sends httpOnly cookies (access_token, refresh_token)
- * - X-Guest-ID header      -> injected on every request when user is not authenticated
+ * - X-Guest-ID header      -> injected only after guest mode is confirmed
  * - Automatic token refresh on 401 (single-retry with refresh rotation)
  */
 
@@ -19,9 +19,22 @@ const api = axios.create({
   timeout: 10_000,
 });
 
+let hasResolvedAuthSession = false;
+let isAuthenticatedSession = false;
+
+export function setAuthenticatedSession(isAuthenticated) {
+  hasResolvedAuthSession = true;
+  isAuthenticatedSession = Boolean(isAuthenticated);
+}
+
+function isAuthEndpoint(url = '') {
+  return url.includes('/api/auth/');
+}
+
 api.interceptors.request.use((config) => {
-  const guestUuid = getGuestUuid();
-  if (guestUuid) {
+  if (!isAuthEndpoint(config.url) && hasResolvedAuthSession && !isAuthenticatedSession) {
+    const guestUuid = getGuestUuid();
+    config.headers = config.headers || {};
     config.headers['X-Guest-ID'] = guestUuid;
   }
   return config;
