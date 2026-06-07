@@ -37,11 +37,25 @@ vi.mock('../components/ResultsPanel', () => ({
 }));
 
 vi.mock('../components/WinModal', () => ({
-  default: ({ isOpen }) => (isOpen ? <div>Practice Win Modal</div> : null),
+  default: ({ isOpen, wordleBotGame }) => (isOpen ? (
+    <div>
+      Practice Win Modal
+      {wordleBotGame && (
+        <span>Practice Bot Game {wordleBotGame.targetWord} {wordleBotGame.status}</span>
+      )}
+    </div>
+  ) : null),
 }));
 
 vi.mock('../components/LoseModal', () => ({
-  default: ({ isOpen }) => (isOpen ? <div>Practice Lose Modal</div> : null),
+  default: ({ isOpen, wordleBotGame }) => (isOpen ? (
+    <div>
+      Practice Lose Modal
+      {wordleBotGame && (
+        <span>Practice Bot Game {wordleBotGame.targetWord} {wordleBotGame.status}</span>
+      )}
+    </div>
+  ) : null),
 }));
 
 import App from '../App.jsx';
@@ -79,6 +93,8 @@ function createStatsState(overrides = {}) {
 describe('App daily completion flow', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    window.localStorage.clear();
+    window.localStorage.setItem('wordle:hasSeenHowToPlay', 'true');
 
     hookState.auth = {
       user: null,
@@ -99,6 +115,7 @@ describe('App daily completion flow', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    window.localStorage.clear();
   });
 
   it('shows a daily completion toast and auto-opens results after two seconds', async () => {
@@ -153,8 +170,36 @@ describe('App daily completion flow', () => {
     await act(async () => {});
 
     expect(screen.getByText('Practice Win Modal')).toBeInTheDocument();
+    expect(screen.getByText('Practice Bot Game CRANE WON')).toBeInTheDocument();
     expect(screen.queryByText('Daily Results Panel')).not.toBeInTheDocument();
     expect(hookState.practice.showToast).not.toHaveBeenCalled();
+  });
+
+  it('passes a completed practice game to the lose modal', async () => {
+    render(<App />);
+
+    hookState.practice = {
+      ...hookState.practice,
+      gameStatus: 'LOST',
+      attempts: 6,
+      targetWord: 'CRANE',
+      submittedWords: ['ADIEU', 'STONY', 'BLIMP', 'SPEED', 'ARRAY', 'EERIE'],
+      guessResults: [
+        [{ letter: 'A', status: 'present' }],
+        [{ letter: 'S', status: 'absent' }],
+        [{ letter: 'B', status: 'absent' }],
+        [{ letter: 'S', status: 'absent' }],
+        [{ letter: 'A', status: 'present' }],
+        [{ letter: 'E', status: 'present' }],
+      ],
+    };
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Practice' }));
+
+    await act(async () => {});
+
+    expect(screen.getByText('Practice Lose Modal')).toBeInTheDocument();
+    expect(screen.getByText('Practice Bot Game CRANE LOST')).toBeInTheDocument();
   });
 
   it('keeps the daily game disabled while auth is bootstrapping', () => {
@@ -190,5 +235,31 @@ describe('App daily completion flow', () => {
       identityKey: 'user-1',
     });
     expect(screen.getByText('Player')).toBeInTheDocument();
+  });
+
+  it('auto-opens the how-to-play guide for first-time visitors and remembers dismissal', async () => {
+    vi.useRealTimers();
+    window.localStorage.removeItem('wordle:hasSeenHowToPlay');
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'How to play' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+
+    expect(window.localStorage.getItem('wordle:hasSeenHowToPlay')).toBe('true');
+    expect(screen.queryByRole('heading', { name: 'How to play' })).not.toBeInTheDocument();
+  });
+
+  it('opens the how-to-play guide from the header help button', async () => {
+    vi.useRealTimers();
+
+    render(<App />);
+
+    expect(screen.queryByRole('heading', { name: 'How to play' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'How to play' }));
+
+    expect(await screen.findByRole('heading', { name: 'How to play' })).toBeInTheDocument();
   });
 });

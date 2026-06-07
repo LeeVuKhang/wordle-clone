@@ -2,7 +2,11 @@ describe('Guest daily play flow', () => {
   beforeEach(() => {
     cy.mockAuthGuest();
     cy.mockDailyGame('CRANE');
-    cy.visit('/');
+    cy.visit('/', {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('wordle:hasSeenHowToPlay', 'true');
+      },
+    });
     cy.wait('@getToday');
   });
 

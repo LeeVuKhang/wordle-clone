@@ -8,6 +8,9 @@ import ModeSwitch from '../ModeSwitch.jsx';
 import ResultsPanel from '../ResultsPanel.jsx';
 import StatsModal from '../StatsModal.jsx';
 import WordleBotPanel from '../WordleBotPanel.jsx';
+import HowToPlayModal from '../HowToPlayModal.jsx';
+import WinModal from '../WinModal.jsx';
+import LoseModal from '../LoseModal.jsx';
 
 const wordleBotMock = vi.hoisted(() => ({
   selectLatestCompletedDailyGame: vi.fn(),
@@ -274,6 +277,23 @@ describe('Modal', () => {
   });
 });
 
+describe('HowToPlayModal', () => {
+  it('explains the rules and closes from the primary action', () => {
+    const onClose = vi.fn();
+    render(<HowToPlayModal isOpen onClose={onClose} />);
+
+    expect(screen.getByRole('dialog', { name: 'How to play' })).toBeInTheDocument();
+    expect(screen.getByText('Guess the hidden 5-letter word in 6 tries.')).toBeInTheDocument();
+    expect(screen.getByText('Daily has one puzzle per day. Practice lets you keep playing.'))
+      .toBeInTheDocument();
+    expect(screen.getByText('Green means the letter is in the correct spot.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Got it' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('ResultsPanel', () => {
   const guessResults = [
     completedRow,
@@ -504,7 +524,7 @@ describe('WordleBotPanel', () => {
   it('renders an unavailable state without a completed game', () => {
     render(<WordleBotPanel game={null} />);
 
-    expect(screen.getByText('Complete a daily game to unlock Wordle Bot analysis.'))
+    expect(screen.getByText('Complete a game to unlock Wordle Bot analysis.'))
       .toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Check Wordle Bot' })).toBeDisabled();
   });
@@ -574,5 +594,64 @@ describe('WordleBotPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Hide Wordle Bot' }));
 
     expect(screen.queryByText('Your guesses')).not.toBeInTheDocument();
+  });
+});
+
+describe('Practice result Wordle Bot', () => {
+  const practiceGame = {
+    id: 'practice-1',
+    gameDate: '2026-05-27',
+    completedAt: '2026-05-27',
+    status: 'WON',
+    attempts: 2,
+    targetWord: 'CRANE',
+    guesses: ['TRACE', 'CRANE'],
+  };
+
+  it('renders Wordle Bot analysis entry in the practice win modal', () => {
+    render(
+      <WinModal
+        isOpen
+        onClose={vi.fn()}
+        attempts={2}
+        user={null}
+        stats={null}
+        isStatsLoading={false}
+        statsError={null}
+        guessResults={[completedRow, completedRow]}
+        mode="practice"
+        gameDate="2026-05-27"
+        onToast={vi.fn()}
+        onPlayAgain={vi.fn()}
+        wordleBotGame={practiceGame}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Wordle Bot' })).toBeInTheDocument();
+    expect(screen.getByText('Analyze this practice run against the full word list.'))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check Wordle Bot' })).toBeEnabled();
+  });
+
+  it('renders Wordle Bot analysis entry in the practice lose modal', () => {
+    render(
+      <LoseModal
+        isOpen
+        onClose={vi.fn()}
+        answer="CRANE"
+        attempts={6}
+        guessResults={[completedRow, completedRow]}
+        mode="practice"
+        gameDate="2026-05-27"
+        onToast={vi.fn()}
+        onPlayAgain={vi.fn()}
+        wordleBotGame={{ ...practiceGame, status: 'LOST', attempts: 6 }}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Wordle Bot' })).toBeInTheDocument();
+    expect(screen.getByText('Analyze this practice run against the full word list.'))
+      .toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Check Wordle Bot' })).toBeEnabled();
   });
 });

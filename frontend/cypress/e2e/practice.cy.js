@@ -4,6 +4,7 @@ describe('Practice play flow', () => {
     cy.mockDailyGame('CRANE');
     cy.visit('/', {
       onBeforeLoad(win) {
+        win.localStorage.setItem('wordle:hasSeenHowToPlay', 'true');
         cy.stub(win.Math, 'random').returns(0);
       },
     });
@@ -20,6 +21,8 @@ describe('Practice play flow', () => {
 
     cy.submitWord('aback');
     cy.contains('You won!').should('be.visible');
+    cy.contains('Wordle Bot').should('be.visible');
+    cy.contains('button', 'Check Wordle Bot').should('be.visible');
     cy.contains('button', 'Play Again').should('be.visible').click();
 
     cy.get('.row').first().find('.cell').first().should('have.text', '');
@@ -32,6 +35,8 @@ describe('Practice play flow', () => {
     cy.contains('Game Over').should('be.visible');
     cy.contains('The word was').should('be.visible');
     cy.contains('ABASE').should('be.visible');
+    cy.contains('Wordle Bot').should('be.visible');
+    cy.contains('button', 'Check Wordle Bot').should('be.visible');
 
     cy.contains('button', 'Close').click();
     cy.contains('button', 'Daily').click();
