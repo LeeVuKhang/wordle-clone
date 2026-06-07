@@ -43,8 +43,15 @@ api.interceptors.request.use((config) => {
 let isRefreshing = false;
 let refreshSubscribers = [];
 
-function onTokenRefreshed() {
-  refreshSubscribers.forEach((cb) => cb());
+function settleRefreshSubscribers(error = null) {
+  refreshSubscribers.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+      return;
+    }
+
+    resolve();
+  });
   refreshSubscribers = [];
 }
 
@@ -58,21 +65,25 @@ api.interceptors.response.use(
       !originalRequest._retry &&
       !originalRequest.url?.includes('/api/auth/refresh')
     ) {
+      originalRequest._retry = true;
+
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          refreshSubscribers.push(() => resolve(api(originalRequest)));
+        return new Promise((resolve, reject) => {
+          refreshSubscribers.push({
+            resolve: () => resolve(api(originalRequest)),
+            reject,
+          });
         });
       }
 
-      originalRequest._retry = true;
       isRefreshing = true;
 
       try {
         await api.post('/api/auth/refresh');
-        onTokenRefreshed();
+        settleRefreshSubscribers();
         return api(originalRequest);
       } catch (refreshError) {
-        refreshSubscribers = [];
+        settleRefreshSubscribers(refreshError);
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

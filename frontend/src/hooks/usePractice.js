@@ -5,7 +5,7 @@
  * No streak impact, no server calls, no Redis session.
  */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import PRACTICE_WORDS_TEXT from '../data/practiceWords.txt?raw';
 import { compareWord, deriveKeyboardStatus, isValidGuess } from '../utils/compareWord.js';
 
@@ -46,10 +46,21 @@ export function usePractice() {
   const [toast, setToast] = useState(null);
   const targetWordRef = useRef('');
   const isProcessingRef = useRef(false);
+  const toastIdRef = useRef(0);
+  const toastTimerRef = useRef(null);
 
   const showToast = useCallback((message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    const id = toastIdRef.current + 1;
+    toastIdRef.current = id;
+    window.clearTimeout(toastTimerRef.current);
+    setToast({ id, message, type });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast((current) => (current?.id === id ? null : current));
+    }, 3000);
+  }, []);
+
+  useEffect(() => () => {
+    window.clearTimeout(toastTimerRef.current);
   }, []);
 
   const startSession = useCallback(() => {

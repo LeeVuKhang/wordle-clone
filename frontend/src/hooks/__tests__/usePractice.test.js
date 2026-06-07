@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../data/practiceWords.txt?raw', () => ({
   default: 'CRANE\nADIEU\nSLATE\nSTARE\nTRACE',
@@ -32,6 +32,11 @@ describe('usePractice', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-22T00:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('startSession sets a 5-letter target word from the practice list', () => {
@@ -117,10 +122,11 @@ describe('usePractice', () => {
     typeWord(result, 'ABC');
     submitCurrentGuess(result);
 
-    expect(result.current.toast).toEqual({
+    expect(result.current.toast).toMatchObject({
       message: 'Not enough letters',
       type: 'warning',
     });
+    expect(result.current.toast.id).toEqual(expect.any(Number));
   });
 
   it("handleKeyPress('ENTER') with an invalid word shows a toast", () => {
@@ -130,10 +136,44 @@ describe('usePractice', () => {
     typeWord(result, 'ZZZZZ');
     submitCurrentGuess(result);
 
-    expect(result.current.toast).toEqual({
+    expect(result.current.toast).toMatchObject({
       message: 'Not in word list',
       type: 'warning',
     });
+    expect(result.current.toast.id).toEqual(expect.any(Number));
+  });
+
+  it('refreshes the invalid word toast on repeated Enter presses', () => {
+    const { result } = renderHook(() => usePractice());
+
+    startPractice(result);
+    typeWord(result, 'ZZZZZ');
+    submitCurrentGuess(result);
+    const firstToastId = result.current.toast.id;
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    submitCurrentGuess(result);
+
+    expect(result.current.toast).toMatchObject({
+      id: firstToastId + 1,
+      message: 'Not in word list',
+      type: 'warning',
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2999);
+    });
+    expect(result.current.toast).toMatchObject({
+      message: 'Not in word list',
+      type: 'warning',
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current.toast).toBeNull();
   });
 
   it('adds valid guesses to guessResults and updates the keyboard', () => {

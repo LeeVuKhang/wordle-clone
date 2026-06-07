@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGame } from '../useGame.js';
 import { gameApi } from '../../services/api.js';
 import { clearOfflineState, getOfflineState } from '../../services/guestStorage.js';
@@ -39,6 +39,10 @@ describe('useGame auth gating', () => {
     vi.clearAllMocks();
     getOfflineState.mockReturnValue(null);
     gameApi.getToday.mockResolvedValue(gameResponse());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('does not fetch the daily game while disabled', () => {
@@ -90,5 +94,46 @@ describe('useGame auth gating', () => {
     expect(result.current.submittedWords).toEqual(['TRACE']);
     expect(gameApi.getToday).toHaveBeenCalledTimes(2);
     expect(clearOfflineState).toHaveBeenCalled();
+  });
+
+  it('refreshes invalid guess toast feedback without letting an old timer clear it', async () => {
+    const { result } = renderHook(() => useGame({ enabled: true, identityKey: 'guest' }));
+
+    await waitFor(() => expect(result.current.gameId).toBe('game-1'));
+    vi.useFakeTimers();
+
+    act(() => {
+      for (const letter of 'ZZZZZ') {
+        result.current.handleKeyPress(letter);
+      }
+    });
+    act(() => {
+      result.current.handleKeyPress('ENTER');
+    });
+    const firstToastId = result.current.toast.id;
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+      result.current.handleKeyPress('ENTER');
+    });
+
+    expect(result.current.toast).toMatchObject({
+      id: firstToastId + 1,
+      message: 'Not in word list',
+      type: 'warning',
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(2999);
+    });
+    expect(result.current.toast).toMatchObject({
+      message: 'Not in word list',
+      type: 'warning',
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current.toast).toBeNull();
   });
 });

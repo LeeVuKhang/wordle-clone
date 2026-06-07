@@ -30,13 +30,24 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   const syncTimer = useRef(null);
   const gameIdRef = useRef(null);
   const loadRequestId = useRef(0);
+  const toastIdRef = useRef(0);
+  const toastTimerRef = useRef(null);
 
   const showToast = useCallback((message, type = 'info') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    const id = toastIdRef.current + 1;
+    toastIdRef.current = id;
+    window.clearTimeout(toastTimerRef.current);
+    setToast({ id, message, type });
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast((current) => (current?.id === id ? null : current));
+    }, 3000);
   }, []);
 
   const isProcessingRef = useRef(false);
+
+  useEffect(() => () => {
+    window.clearTimeout(toastTimerRef.current);
+  }, []);
 
   const resetGameState = useCallback(() => {
     setGameId(null);
