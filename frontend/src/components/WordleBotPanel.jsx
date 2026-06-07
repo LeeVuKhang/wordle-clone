@@ -97,7 +97,9 @@ function PlayerRow({ row }) {
 const WordleBotPanel = ({
   game,
   description,
-  unavailableMessage = 'Complete a daily game to unlock Wordle Bot analysis.',
+  unavailableMessage = 'Complete a game to unlock Wordle Bot analysis.',
+  loadingMessage = 'Analyzing the completed game...',
+  errorMessage = 'Unable to analyze this completed game.',
   className = '',
   variant = 'default',
 }) => {
@@ -171,12 +173,12 @@ const WordleBotPanel = ({
         <div className="wordlebot-body" aria-live="polite">
           {isLoading && (
             <p className="wordlebot-loading" role="status">
-              {progressStage || 'Analyzing the latest completed daily game...'}
+              {progressStage || loadingMessage}
             </p>
           )}
 
           {isError && (
-            <p className="wordlebot-error">{error || 'Unable to analyze this daily game.'}</p>
+            <p className="wordlebot-error">{error || errorMessage}</p>
           )}
 
           {isReady && (

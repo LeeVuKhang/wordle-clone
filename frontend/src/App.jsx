@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense, lazy } from 'react';
 
 import Header    from './components/Header';
 import GameBoard from './components/GameBoard';
@@ -20,9 +20,28 @@ const LoseModal = lazy(() => import('./components/LoseModal'));
 const StatsModal = lazy(() => import('./components/StatsModal'));
 const LeaderboardModal = lazy(() => import('./components/LeaderboardModal'));
 const ResultsPanel = lazy(() => import('./components/ResultsPanel'));
+const HowToPlayModal = lazy(() => import('./components/HowToPlayModal'));
 
 // Initialise retry queue listener once at module level
 initSyncRetryService();
+
+const HOW_TO_PLAY_STORAGE_KEY = 'wordle:hasSeenHowToPlay';
+
+function hasSeenHowToPlay() {
+  try {
+    return window.localStorage.getItem(HOW_TO_PLAY_STORAGE_KEY) === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function rememberHowToPlay() {
+  try {
+    window.localStorage.setItem(HOW_TO_PLAY_STORAGE_KEY, 'true');
+  } catch {
+    // The guide can still close when storage is unavailable.
+  }
+}
 
 // ─── OAuth callback handler ───────────────────────────────────────────────────
 /**
@@ -67,6 +86,7 @@ function App() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showLeaderboardModal, setShowLeaderboardModal] = useState(false);
+  const [showHowToPlayModal, setShowHowToPlayModal] = useState(() => !hasSeenHowToPlay());
   const [showResultsPanel, setShowResultsPanel] = useState(false);
   const [mergeResult, setMergeResult] = useState(null);
   const [modalDismissed, setModalDismissed] = useState(false);
@@ -92,6 +112,37 @@ function App() {
   // Active game depends on mode
   const game = mode === 'daily' ? daily : practice;
   const dailyGameDate = new Date().toISOString().slice(0, 10);
+  const practiceBotGame = useMemo(() => {
+    const status = practice.gameStatus === 'WON' || practice.gameStatus === 'LOST'
+      ? practice.gameStatus
+      : null;
+
+    if (
+      !status ||
+      !practice.targetWord ||
+      !Array.isArray(practice.submittedWords) ||
+      practice.submittedWords.length === 0
+    ) {
+      return null;
+    }
+
+    return {
+      id: practice.practiceId,
+      gameDate: dailyGameDate,
+      completedAt: dailyGameDate,
+      status,
+      attempts: practice.attempts,
+      targetWord: practice.targetWord,
+      guesses: practice.submittedWords,
+    };
+  }, [
+    dailyGameDate,
+    practice.attempts,
+    practice.gameStatus,
+    practice.practiceId,
+    practice.submittedWords,
+    practice.targetWord,
+  ]);
 
   useEffect(() => {
     latestStatsRef.current = stats;
@@ -221,6 +272,11 @@ function App() {
     setModalDismissed(false);
   }, [practice.startSession]);
 
+  const handleCloseHowToPlay = useCallback(() => {
+    rememberHowToPlay();
+    setShowHowToPlayModal(false);
+  }, []);
+
   // ── Loading state ─────────────────────────────────────────────────────
   if (auth.isLoading || (mode === 'daily' && daily.isLoading)) {
     return (
@@ -243,11 +299,17 @@ function App() {
           onLogout={auth.logout}
           onStatsClick={() => setShowStatsModal(true)}
           onLeaderboardClick={() => setShowLeaderboardModal(true)}
+          onHelpClick={() => setShowHowToPlayModal(true)}
         />
         <div className="app-error">
           <p>{daily.error}</p>
           <button onClick={() => window.location.reload()}>Retry</button>
         </div>
+        {showHowToPlayModal && (
+          <Suspense fallback={null}>
+            <HowToPlayModal isOpen onClose={handleCloseHowToPlay} />
+          </Suspense>
+        )}
       </div>
     );
   }
@@ -262,10 +324,11 @@ function App() {
         onLogout={auth.logout}
         onStatsClick={() => setShowStatsModal(true)}
         onLeaderboardClick={() => setShowLeaderboardModal(true)}
+        onHelpClick={() => setShowHowToPlayModal(true)}
       />
 
       {/* Toast notifications (Task 8.10) */}
-      <Toast message={game.toast?.message} type={game.toast?.type} />
+      <Toast key={game.toast?.id} message={game.toast?.message} type={game.toast?.type} />
 
       {/* Practice loading spinner */}
       {mode === 'practice' && practice.isLoading && !practice.practiceId && (
@@ -346,6 +409,7 @@ function App() {
             gameDate={dailyGameDate}
             onToast={game.showToast}
             onPlayAgain={handlePracticeReplay}
+            wordleBotGame={practiceBotGame}
           />
         </Suspense>
       )}
@@ -362,6 +426,7 @@ function App() {
             gameDate={dailyGameDate}
             onToast={game.showToast}
             onPlayAgain={handlePracticeReplay}
+            wordleBotGame={practiceBotGame}
           />
         </Suspense>
       )}
@@ -402,6 +467,12 @@ function App() {
             error={auth.error}
             mergeResult={mergeResult}
           />
+        </Suspense>
+      )}
+
+      {showHowToPlayModal && (
+        <Suspense fallback={null}>
+          <HowToPlayModal isOpen onClose={handleCloseHowToPlay} />
         </Suspense>
       )}
     </div>

@@ -46,7 +46,7 @@ async function fallbackAnalyze(game) {
   });
 
   if (!analysis) {
-    throw new Error('No completed daily game is ready for analysis.');
+    throw new Error('No completed game is ready for analysis.');
   }
 
   return analysis;
@@ -74,7 +74,7 @@ export function useWordleBotAnalysis() {
       setState({
         ...EMPTY_STATE,
         status: 'error',
-        error: 'No completed daily game is ready for analysis.',
+        error: 'No completed game is ready for analysis.',
       });
       return null;
     }
@@ -142,14 +142,14 @@ export function useWordleBotAnalysis() {
                 status: 'error',
                 progressStage: null,
                 analysis: null,
-                error: message.error || 'Unable to analyze this daily game.',
+                error: message.error || 'Unable to analyze this completed game.',
               });
               reject(new Error(message.error));
             }
           };
 
           worker.onerror = (event) => {
-            const message = event?.message || 'Unable to analyze this daily game.';
+            const message = event?.message || 'Unable to analyze this completed game.';
             setState({
               status: 'error',
               progressStage: null,
@@ -191,7 +191,7 @@ export function useWordleBotAnalysis() {
         status: 'error',
         progressStage: null,
         analysis: null,
-        error: err?.message || 'Unable to analyze this daily game.',
+        error: err?.message || 'Unable to analyze this completed game.',
       });
       return null;
     }

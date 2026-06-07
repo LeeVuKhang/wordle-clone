@@ -181,7 +181,11 @@ const StatsModal = ({
               })}
             </section>
 
-            <WordleBotPanel game={wordleBotGame} variant="stats" />
+            <WordleBotPanel
+              game={wordleBotGame}
+              variant="stats"
+              unavailableMessage="Complete a daily game to unlock Wordle Bot analysis."
+            />
           </div>
         )}
       </div>

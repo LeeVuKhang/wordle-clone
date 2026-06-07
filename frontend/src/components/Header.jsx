@@ -1,6 +1,7 @@
 import ModeSwitch from './ModeSwitch';
 import {
   ChartBar,
+  Question,
   SignIn,
   SignOut,
   Trophy,
@@ -21,6 +22,7 @@ const Header = ({
   onLogout,
   onStatsClick,
   onLeaderboardClick,
+  onHelpClick,
 }) => {
   const activeModeLabel = mode === 'daily' ? 'Daily' : 'Practice';
   const playerName = user ? (user.username || user.email.split('@')[0]) : null;
@@ -44,6 +46,10 @@ const Header = ({
         </div>
 
         <div className="header-nav" aria-label="Player panels">
+          <button className="header-btn header-btn--tool" type="button" onClick={onHelpClick} aria-label="How to play">
+            <Question size={17} weight="bold" aria-hidden="true" />
+            <span>Help</span>
+          </button>
           <button className="header-btn header-btn--tool" type="button" onClick={onStatsClick} aria-label="Stats">
             <ChartBar size={17} weight="bold" aria-hidden="true" />
             <span>Stats</span>

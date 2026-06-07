@@ -1,6 +1,7 @@
 import { WarningCircle } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
+import WordleBotPanel from './WordleBotPanel.jsx';
 import './ResultModal.css';
 import './LoseModal.css';
 
@@ -19,6 +20,7 @@ const LoseModal = ({
   gameDate,
   onToast,
   onPlayAgain,
+  wordleBotGame,
 }) => {
   if (!isOpen) return null;
 
@@ -47,6 +49,15 @@ const LoseModal = ({
         />
 
         {isDaily && <CountdownTimer />}
+
+        {mode === 'practice' && (
+          <WordleBotPanel
+            game={wordleBotGame}
+            variant="practice"
+            description="Analyze this practice run against the full word list."
+            unavailableMessage="Finish this practice puzzle to unlock Wordle Bot analysis."
+          />
+        )}
 
         <div className="result-actions">
           {mode === 'practice' && (

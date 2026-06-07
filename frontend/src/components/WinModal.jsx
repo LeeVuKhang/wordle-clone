@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Trophy } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
 import ShareButton from './ShareButton';
+import WordleBotPanel from './WordleBotPanel.jsx';
 import './ResultModal.css';
 import './WinModal.css';
 
@@ -48,6 +49,7 @@ const WinModal = ({
   gameDate,
   onToast,
   onPlayAgain,
+  wordleBotGame,
 }) => {
   const [confetti, setConfetti] = useState([]);
   const isDaily = mode === 'daily';
@@ -133,6 +135,15 @@ const WinModal = ({
         />
 
         {isDaily && <CountdownTimer />}
+
+        {mode === 'practice' && (
+          <WordleBotPanel
+            game={wordleBotGame}
+            variant="practice"
+            description="Analyze this practice run against the full word list."
+            unavailableMessage="Finish this practice puzzle to unlock Wordle Bot analysis."
+          />
+        )}
 
         <div className="result-actions">
           {mode === 'practice' && (

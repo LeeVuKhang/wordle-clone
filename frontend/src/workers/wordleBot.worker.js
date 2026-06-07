@@ -36,7 +36,7 @@ self.onmessage = (event) => {
     });
 
     if (!analysis) {
-      throw new Error('No completed daily game is ready for analysis.');
+      throw new Error('No completed game is ready for analysis.');
     }
 
     postProgress(requestId, 'Comparing bot path');
@@ -49,7 +49,7 @@ self.onmessage = (event) => {
     self.postMessage({
       type: 'analysis-error',
       requestId,
-      error: err?.message || 'Unable to analyze this daily game.',
+      error: err?.message || 'Unable to analyze this completed game.',
     });
   }
 };
