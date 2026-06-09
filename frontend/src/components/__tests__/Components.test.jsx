@@ -11,6 +11,7 @@ import WordleBotPanel from '../WordleBotPanel.jsx';
 import HowToPlayModal from '../HowToPlayModal.jsx';
 import WinModal from '../WinModal.jsx';
 import LoseModal from '../LoseModal.jsx';
+import { TILE_REVEAL_STAGGER_MS } from '../../utils/revealTiming.js';
 
 const wordleBotMock = vi.hoisted(() => ({
   selectLatestCompletedDailyGame: vi.fn(),
@@ -129,9 +130,13 @@ describe('GameBoard', () => {
       <GameBoard guessResults={[completedRow]} currentGuess="" currentRow={1} />,
     );
 
+    const completedCells = container.querySelectorAll('.row').item(0).querySelectorAll('.cell');
     expect(container.querySelectorAll('.row').item(0).querySelectorAll('.correct')).toHaveLength(2);
     expect(container.querySelectorAll('.row').item(0).querySelectorAll('.present')).toHaveLength(1);
     expect(container.querySelectorAll('.row').item(0).querySelectorAll('.absent')).toHaveLength(2);
+    expect(completedCells.item(1)).toHaveStyle({
+      animationDelay: `${TILE_REVEAL_STAGGER_MS / 1000}s`,
+    });
   });
 
   it('shows the current guess in the active row', () => {

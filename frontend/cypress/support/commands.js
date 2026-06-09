@@ -1,3 +1,5 @@
+import { GUESS_REVEAL_DURATION_MS } from '../../src/utils/revealTiming.js';
+
 Cypress.Commands.add('mockAuthGuest', () => {
   cy.intercept('GET', '**/api/auth/me', {
     statusCode: 401,
@@ -39,6 +41,7 @@ Cypress.Commands.add('mockDailyGame', (targetWord = 'CRANE') => {
 });
 
 Cypress.Commands.add('submitWord', (word) => {
+  cy.get('button[aria-label="ENTER"]').should('not.be.disabled');
   cy.get('body').type(`${word}{enter}`);
-  cy.wait(200);
+  cy.wait(GUESS_REVEAL_DURATION_MS + 40);
 });

@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import PRACTICE_WORDS_TEXT from '../data/practiceWords.txt?raw';
 import { compareWord, deriveKeyboardStatus, isValidGuess } from '../utils/compareWord.js';
+import { GUESS_REVEAL_DURATION_MS } from '../utils/revealTiming.js';
 
 const MAX_ATTEMPTS = 6;
 const PRACTICE_WORDS = [...new Set(
@@ -42,12 +43,14 @@ export function usePractice() {
   const [gameStatus, setGameStatus] = useState('PLAYING');
   const [attempts, setAttempts] = useState(0);
   const [isLoading] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const targetWordRef = useRef('');
   const isProcessingRef = useRef(false);
   const toastIdRef = useRef(0);
   const toastTimerRef = useRef(null);
+  const revealTimerRef = useRef(null);
 
   const showToast = useCallback((message, type = 'info') => {
     const id = toastIdRef.current + 1;
@@ -61,6 +64,7 @@ export function usePractice() {
 
   useEffect(() => () => {
     window.clearTimeout(toastTimerRef.current);
+    window.clearTimeout(revealTimerRef.current);
   }, []);
 
   const startSession = useCallback(() => {
@@ -76,19 +80,21 @@ export function usePractice() {
       setKeyboardStatus({});
       setGameStatus('PLAYING');
       setAttempts(0);
+      setIsRevealing(false);
       isProcessingRef.current = false;
+      window.clearTimeout(revealTimerRef.current);
     } catch (err) {
       setError(err.message || 'Failed to start practice session');
     }
   }, []);
 
   const handleLetter = useCallback((letter) => {
-    if (gameStatus !== 'PLAYING' || currentGuess.length >= 5) return;
+    if (gameStatus !== 'PLAYING' || isProcessingRef.current || currentGuess.length >= 5) return;
     setCurrentGuess((prev) => prev + letter.toUpperCase());
   }, [gameStatus, currentGuess]);
 
   const handleDelete = useCallback(() => {
-    if (gameStatus !== 'PLAYING') return;
+    if (gameStatus !== 'PLAYING' || isProcessingRef.current) return;
     setCurrentGuess((prev) => prev.slice(0, -1));
   }, [gameStatus]);
 
@@ -98,6 +104,7 @@ export function usePractice() {
     if (!isValidGuess(currentGuess)) { showToast('Not in word list', 'warning'); return; }
 
     isProcessingRef.current = true;
+    setIsRevealing(true);
 
     const normalizedGuess = currentGuess.toUpperCase();
     const result = compareWord(normalizedGuess, targetWord);
@@ -114,9 +121,11 @@ export function usePractice() {
     setCurrentGuess('');
     setGameStatus(newStatus);
 
-    setTimeout(() => {
+    window.clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = window.setTimeout(() => {
       isProcessingRef.current = false;
-    }, 150);
+      setIsRevealing(false);
+    }, GUESS_REVEAL_DURATION_MS);
   }, [gameStatus, targetWord, currentGuess, submittedWords, guessResults, showToast]);
 
   const handleKeyPress = useCallback((key) => {
@@ -128,7 +137,7 @@ export function usePractice() {
   return {
     practiceId, targetWord, guessResults, submittedWords,
     currentGuess, keyboardStatus, gameStatus, attempts,
-    isLoading, error, toast, showToast,
+    isLoading, isRevealing, error, toast, showToast,
     startSession, handleKeyPress,
   };
 }

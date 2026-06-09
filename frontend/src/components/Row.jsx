@@ -1,4 +1,5 @@
 import Cell from './Cell';
+import { TILE_REVEAL_STAGGER_MS } from '../utils/revealTiming.js';
 import './Row.css';
 
 /**
@@ -18,7 +19,7 @@ const Row = ({ result, currentGuess, isCurrentRow }) => {
           key={i}
           value={result[i]?.letter || ''}
           status={result[i]?.status || ''}
-          revealDelay={i * 0.1}
+          revealDelay={(i * TILE_REVEAL_STAGGER_MS) / 1000}
         />
       );
     }

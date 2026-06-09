@@ -6,6 +6,7 @@ vi.mock('../../data/practiceWords.txt?raw', () => ({
 }));
 
 import { usePractice } from '../usePractice.js';
+import { GUESS_REVEAL_DURATION_MS } from '../../utils/revealTiming.js';
 
 function startPractice(result, randomValue = 0) {
   vi.spyOn(Math, 'random').mockReturnValue(randomValue);
@@ -209,7 +210,7 @@ describe('usePractice', () => {
       typeWord(result, guess);
       submitCurrentGuess(result);
       act(() => {
-        vi.advanceTimersByTime(151);
+        vi.advanceTimersByTime(GUESS_REVEAL_DURATION_MS + 1);
       });
     }
 
@@ -224,7 +225,7 @@ describe('usePractice', () => {
     typeWord(result, 'CRANE');
     submitCurrentGuess(result);
     act(() => {
-      vi.advanceTimersByTime(151);
+      vi.advanceTimersByTime(GUESS_REVEAL_DURATION_MS + 1);
       result.current.handleKeyPress('A');
       result.current.handleKeyPress('ENTER');
     });

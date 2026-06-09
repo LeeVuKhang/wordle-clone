@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { gameApi } from '../services/api.js';
 import { compareWord, isValidGuess, deriveKeyboardStatus } from '../utils/compareWord.js';
+import { GUESS_REVEAL_DURATION_MS } from '../utils/revealTiming.js';
 import { saveOfflineState, getOfflineState, clearOfflineState } from '../services/guestStorage.js';
 import { enqueueSyncRetry } from '../services/syncRetry.js';
 
@@ -23,6 +24,7 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   const [gameStatus, setGameStatus] = useState('PLAYING');
   const [attempts, setAttempts] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [loadedIdentityKey, setLoadedIdentityKey] = useState(null);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
@@ -32,6 +34,7 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   const loadRequestId = useRef(0);
   const toastIdRef = useRef(0);
   const toastTimerRef = useRef(null);
+  const revealTimerRef = useRef(null);
 
   const showToast = useCallback((message, type = 'info') => {
     const id = toastIdRef.current + 1;
@@ -47,6 +50,7 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
 
   useEffect(() => () => {
     window.clearTimeout(toastTimerRef.current);
+    window.clearTimeout(revealTimerRef.current);
   }, []);
 
   const resetGameState = useCallback(() => {
@@ -58,10 +62,12 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     setKeyboardStatus({});
     setGameStatus('PLAYING');
     setAttempts(0);
+    setIsRevealing(false);
     setLoadedIdentityKey(null);
     setError(null);
     gameIdRef.current = null;
     isProcessingRef.current = false;
+    window.clearTimeout(revealTimerRef.current);
   }, []);
 
   // Load daily game (Task 8.3)
@@ -69,6 +75,9 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     if (!enabled) return null;
 
     const requestId = ++loadRequestId.current;
+    window.clearTimeout(revealTimerRef.current);
+    isProcessingRef.current = false;
+    setIsRevealing(false);
     setIsLoading(true);
     setError(null);
     try {
@@ -146,13 +155,14 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   }, []);
 
   const handleLetter = useCallback((letter) => {
-    if (gameStatus !== 'PLAYING' || currentGuess.length >= 5) return;
+    if (gameStatus !== 'PLAYING' || isProcessingRef.current || currentGuess.length >= 5) return;
     setCurrentGuess((prev) => prev + letter.toUpperCase());
   }, [gameStatus, currentGuess]);
 
   const handleDelete = useCallback(() => {
+    if (gameStatus !== 'PLAYING' || isProcessingRef.current) return;
     setCurrentGuess((prev) => prev.slice(0, -1));
-  }, []);
+  }, [gameStatus]);
 
   const handleEnter = useCallback(() => {
     if (gameStatus !== 'PLAYING' || isProcessingRef.current) return;
@@ -160,6 +170,7 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     if (!isValidGuess(currentGuess)) { showToast('Not in word list', 'warning'); return; }
 
     isProcessingRef.current = true;
+    setIsRevealing(true);
 
     const result = compareWord(currentGuess, targetWord);
     const newWords = [...submittedWords, currentGuess];
@@ -177,9 +188,11 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     setGameStatus(newStatus);
     syncToServer(gameIdRef.current, newWords, newStatus);
 
-    setTimeout(() => {
+    window.clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = window.setTimeout(() => {
       isProcessingRef.current = false;
-    }, 150);
+      setIsRevealing(false);
+    }, GUESS_REVEAL_DURATION_MS);
   }, [gameStatus, currentGuess, targetWord, submittedWords, guessResults, showToast, syncToServer]);
 
   const handleKeyPress = useCallback((key) => {
@@ -193,7 +206,7 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   return {
     gameId, targetWord, guessResults, submittedWords,
     currentGuess, keyboardStatus, gameStatus, attempts,
-    isLoading: isGameLoading, error, toast, showToast, handleKeyPress,
+    isLoading: isGameLoading, isRevealing, error, toast, showToast, handleKeyPress,
     reloadGame: loadGame,
   };
 }

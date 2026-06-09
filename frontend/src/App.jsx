@@ -198,6 +198,8 @@ function App() {
   // ── Modal derived state ───────────────────────────────────────────────
   const isGameOver = game.gameStatus === 'WON' || game.gameStatus === 'LOST';
   const isWon      = game.gameStatus === 'WON';
+  const canShowDailyResultsAction = mode === 'daily' && isGameOver && !game.isRevealing;
+  const canShowPracticeCompletion = mode === 'practice' && isGameOver && !game.isRevealing;
 
   useEffect(() => {
     if (game.gameStatus === 'PLAYING') setModalDismissed(false);
@@ -351,7 +353,7 @@ function App() {
         />
 
         {/* Virtual keyboard */}
-        {isGameOver && mode === 'daily' ? (
+        {canShowDailyResultsAction ? (
           <div className="see-results-section">
             <button
               className="see-results-btn"
@@ -365,13 +367,13 @@ function App() {
           <Keyboard
             onKeyPress={game.handleKeyPress}
             keyboardStatus={game.keyboardStatus}
-            disabled={isGameOver || (mode === 'practice' && practice.isLoading)}
+            disabled={game.isRevealing || isGameOver || (mode === 'practice' && practice.isLoading)}
           />
         )}
       </main>
 
       {/* Daily mode uses ResultsPanel instead of auto-popup modals */}
-      {mode === 'daily' && isGameOver && showResultsPanel && (
+      {mode === 'daily' && isGameOver && !game.isRevealing && showResultsPanel && (
         <Suspense fallback={null}>
           <ResultsPanel
             isOpen
@@ -394,7 +396,7 @@ function App() {
       )}
 
       {/* Practice mode keeps the existing WinModal/LoseModal flow */}
-      {mode === 'practice' && isGameOver && isWon && !modalDismissed && (
+      {canShowPracticeCompletion && isWon && !modalDismissed && (
         <Suspense fallback={null}>
           <WinModal
             isOpen
@@ -414,7 +416,7 @@ function App() {
         </Suspense>
       )}
 
-      {mode === 'practice' && isGameOver && !isWon && !modalDismissed && (
+      {canShowPracticeCompletion && !isWon && !modalDismissed && (
         <Suspense fallback={null}>
           <LoseModal
             isOpen

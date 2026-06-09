@@ -73,6 +73,7 @@ function createGameState(overrides = {}) {
     isLoading: false,
     error: null,
     toast: null,
+    isRevealing: false,
     showToast: vi.fn(),
     handleKeyPress: vi.fn(),
     reloadGame: vi.fn(),
@@ -148,12 +149,13 @@ describe('App daily completion flow', () => {
   });
 
   it('does not auto-open daily results for practice completion', async () => {
-    render(<App />);
+    const { rerender } = render(<App />);
 
     hookState.practice = {
       ...hookState.practice,
       gameStatus: 'WON',
       attempts: 3,
+      isRevealing: true,
       submittedWords: ['ADIEU', 'STONY', 'CRANE'],
       guessResults: [
         [{ letter: 'A', status: 'present' }],
@@ -167,6 +169,16 @@ describe('App daily completion flow', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
     });
+    await act(async () => {});
+
+    expect(screen.queryByText('Practice Win Modal')).not.toBeInTheDocument();
+
+    hookState.practice = {
+      ...hookState.practice,
+      isRevealing: false,
+    };
+
+    rerender(<App />);
     await act(async () => {});
 
     expect(screen.getByText('Practice Win Modal')).toBeInTheDocument();
