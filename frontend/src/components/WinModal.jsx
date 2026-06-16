@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { Trophy } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
+import DialogFrame from './DialogFrame.jsx';
 import ShareButton from './ShareButton';
 import WordleBotPanel from './WordleBotPanel.jsx';
 import './ResultModal.css';
@@ -51,27 +52,23 @@ const WinModal = ({
   onPlayAgain,
   wordleBotGame,
 }) => {
-  const [confetti, setConfetti] = useState([]);
+  const confetti = useMemo(() => (isOpen ? createConfetti() : []), [isOpen]);
   const isDaily = mode === 'daily';
   const isAuthStatsError =
     typeof statsError === 'string' &&
     /auth|unauthorized|refresh token/i.test(statsError);
   const statsErrorMessage = statsError && !isAuthStatsError ? 'Could not load stats' : null;
 
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    setConfetti(createConfetti());
-    const timer = window.setTimeout(() => setConfetti([]), 3000);
-
-    return () => window.clearTimeout(timer);
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return (
-    <div className="result-overlay" onClick={onClose}>
-      <div className="result-modal win-modal" onClick={(event) => event.stopPropagation()}>
+    <DialogFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName="result-overlay"
+      contentClassName="result-modal win-modal"
+      labelledBy="win-title"
+    >
         <div className="win-confetti" aria-hidden="true">
           {confetti.map((piece) => (
             <span
@@ -93,7 +90,7 @@ const WinModal = ({
           <Trophy size={30} weight="bold" />
         </div>
 
-        <h2 className="result-title">You won!</h2>
+        <h2 className="result-title" id="win-title">You won!</h2>
         <p className="result-message">
           You got it in {attempts} {attempts === 1 ? 'try' : 'tries'}!
         </p>
@@ -155,8 +152,7 @@ const WinModal = ({
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </DialogFrame>
   );
 };
 

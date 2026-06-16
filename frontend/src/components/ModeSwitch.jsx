@@ -10,6 +10,7 @@ const ModeSwitch = ({ mode, onSwitch }) => {
     <div className="mode-switch" role="tablist" aria-label="Game mode">
       <button
         id="mode-daily"
+        type="button"
         role="tab"
         aria-selected={mode === 'daily'}
         className={`mode-btn ${mode === 'daily' ? 'mode-btn--active' : ''}`}
@@ -19,6 +20,7 @@ const ModeSwitch = ({ mode, onSwitch }) => {
       </button>
       <button
         id="mode-practice"
+        type="button"
         role="tab"
         aria-selected={mode === 'practice'}
         className={`mode-btn ${mode === 'practice' ? 'mode-btn--active' : ''}`}

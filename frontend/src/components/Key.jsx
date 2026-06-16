@@ -11,6 +11,7 @@ const Key = ({ value, status, onClick, isWide = false, disabled = false }) => {
   return (
     <button
       className={`key ${isWide ? 'wide' : ''} ${status || ''}`}
+      type="button"
       onClick={() => onClick(value)}
       aria-label={ariaLabel}
       disabled={disabled}

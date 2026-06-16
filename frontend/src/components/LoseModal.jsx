@@ -1,5 +1,6 @@
 import { WarningCircle } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
+import DialogFrame from './DialogFrame.jsx';
 import ShareButton from './ShareButton';
 import WordleBotPanel from './WordleBotPanel.jsx';
 import './ResultModal.css';
@@ -27,13 +28,18 @@ const LoseModal = ({
   const isDaily = mode === 'daily';
 
   return (
-    <div className="result-overlay" onClick={onClose}>
-      <div className="result-modal lose-modal" onClick={(event) => event.stopPropagation()}>
+    <DialogFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName="result-overlay"
+      contentClassName="result-modal lose-modal"
+      labelledBy="lose-title"
+    >
         <div className="result-icon result-icon--lose" aria-hidden="true">
           <WarningCircle size={30} weight="bold" />
         </div>
 
-        <h2 className="result-title">Game Over</h2>
+        <h2 className="result-title" id="lose-title">Game Over</h2>
         <p className="lose-kicker">The word was</p>
         <div className="lose-answer" aria-label={`Correct answer ${answer}`}>
           {answer}
@@ -69,8 +75,7 @@ const LoseModal = ({
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </DialogFrame>
   );
 };
 

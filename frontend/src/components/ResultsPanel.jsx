@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ArrowLeft, Trophy, X } from '@phosphor-icons/react';
 import CountdownTimer from './CountdownTimer';
+import DialogFrame from './DialogFrame.jsx';
 import ShareButton from './ShareButton';
 import WordleBotPanel from './WordleBotPanel.jsx';
 import { computeDailyBadgeCallouts } from '../utils/badges.js';
@@ -83,14 +84,13 @@ const ResultsPanel = ({
   const statsErrorMessage = statsError && !isAuthStatsError ? 'Could not load stats' : null;
 
   return (
-    <div className="results-panel-overlay" onClick={onClose}>
-      <section
-        className="results-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="results-heading"
-        onClick={(event) => event.stopPropagation()}
-      >
+    <DialogFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName="results-panel-overlay"
+      contentClassName="results-panel"
+      labelledBy="results-heading"
+    >
         <button className="results-panel-close" type="button" onClick={onClose}>
           <ArrowLeft size={16} weight="bold" aria-hidden="true" />
           <span>Back to puzzle</span>
@@ -235,8 +235,7 @@ const ResultsPanel = ({
         <div className="results-countdown-section">
           <CountdownTimer />
         </div>
-      </section>
-    </div>
+    </DialogFrame>
   );
 };
 

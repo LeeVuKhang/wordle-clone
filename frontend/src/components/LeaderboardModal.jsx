@@ -1,15 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ArrowClockwise, Trophy, X } from '@phosphor-icons/react';
+import DialogFrame from './DialogFrame.jsx';
 import { statsApi } from '../services/api.js';
 import './PanelModal.css';
 import './LeaderboardModal.css';
 
+const leaderboardDateFormatter = new Intl.DateTimeFormat(undefined, {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
 function formatTimestamp(value) {
   if (!value) return 'Not loaded';
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
+  return leaderboardDateFormatter.format(new Date(value));
 }
 
 function getRefreshCountdown(nextRefresh) {
@@ -65,23 +68,25 @@ const LeaderboardModal = ({ isOpen, onClose, onToast }) => {
     return () => window.clearInterval(interval);
   }, [isOpen]);
 
-  const refreshCountdown = useMemo(
-    () => getRefreshCountdown(data?.nextRefresh),
-    [data?.nextRefresh, tick],
-  );
+  const refreshCountdown = getRefreshCountdown(data?.nextRefresh, tick);
 
   if (!isOpen) return null;
 
   return (
-    <div className="panel-overlay leaderboard-overlay" onClick={onClose}>
-      <div className="panel-modal leaderboard-modal" onClick={(event) => event.stopPropagation()}>
+    <DialogFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName="panel-overlay leaderboard-overlay"
+      contentClassName="panel-modal leaderboard-modal"
+      labelledBy="leaderboard-heading"
+    >
         <div className="leaderboard-header">
           <div className="leaderboard-heading-lockup">
             <span className="leaderboard-heading-icon" aria-hidden="true">
               <Trophy size={24} weight="bold" />
             </span>
             <div>
-            <h2>Leaderboard</h2>
+            <h2 id="leaderboard-heading">Leaderboard</h2>
             <p>Top streaks</p>
             </div>
           </div>
@@ -123,29 +128,32 @@ const LeaderboardModal = ({ isOpen, onClose, onToast }) => {
             {data.entries.length === 0 ? (
               <p className="leaderboard-empty">No streaks yet.</p>
             ) : (
-              <div className="leaderboard-table" role="table" aria-label="Top streak leaderboard">
-                <div className="leaderboard-row leaderboard-row--head" role="row">
-                  <span role="columnheader">Rank</span>
-                  <span role="columnheader">Username</span>
-                  <span role="columnheader">Max</span>
-                  <span role="columnheader">Current</span>
-                  <span role="columnheader">Won</span>
-                </div>
-                {data.entries.map((entry) => (
-                  <div className="leaderboard-row" role="row" key={`${entry.rank}-${entry.username}`}>
-                    <span role="cell">{entry.rank}</span>
-                    <span role="cell">{entry.username || 'Anonymous'}</span>
-                    <span role="cell">{entry.maxStreak}</span>
-                    <span role="cell">{entry.currentStreak}</span>
-                    <span role="cell">{entry.gamesWon}</span>
-                  </div>
-                ))}
-              </div>
+              <table className="leaderboard-table" aria-label="Top streak leaderboard">
+                <thead>
+                  <tr className="leaderboard-row leaderboard-row--head">
+                    <th scope="col">Rank</th>
+                    <th scope="col">Username</th>
+                    <th scope="col">Max</th>
+                    <th scope="col">Current</th>
+                    <th scope="col">Won</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.entries.map((entry) => (
+                    <tr className="leaderboard-row" key={`${entry.rank}-${entry.username}`}>
+                      <td>{entry.rank}</td>
+                      <td>{entry.username || 'Anonymous'}</td>
+                      <td>{entry.maxStreak}</td>
+                      <td>{entry.currentStreak}</td>
+                      <td>{entry.gamesWon}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </>
         )}
-      </div>
-    </div>
+    </DialogFrame>
   );
 };
 

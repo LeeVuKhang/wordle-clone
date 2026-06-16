@@ -1,17 +1,20 @@
 import { Question, X } from '@phosphor-icons/react';
+import DialogFrame from './DialogFrame.jsx';
 import './HowToPlayModal.css';
 
 const HowToPlayModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="howto-overlay" onClick={onClose}>
+    <DialogFrame
+      isOpen={isOpen}
+      onClose={onClose}
+      overlayClassName="howto-overlay"
+      contentClassName="howto-modal"
+      labelledBy="howto-heading"
+    >
       <section
-        className="howto-modal"
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="howto-heading"
-        onClick={(event) => event.stopPropagation()}
       >
         <header className="howto-header">
           <span className="howto-header-icon" aria-hidden="true">
@@ -67,7 +70,7 @@ const HowToPlayModal = ({ isOpen, onClose }) => {
           Got it
         </button>
       </section>
-    </div>
+    </DialogFrame>
   );
 };
 

@@ -119,9 +119,16 @@
 
 .leaderboard-table {
   width: 100%;
+  display: block;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  border-spacing: 0;
+}
+
+.leaderboard-table thead,
+.leaderboard-table tbody {
+  display: block;
 }
 
 .leaderboard-row {
@@ -147,17 +154,18 @@
   text-transform: uppercase;
 }
 
-.leaderboard-row span {
+.leaderboard-row > * {
   min-width: 0;
   padding: 0 10px;
   overflow: hidden;
+  border: 0;
   font-size: 0.86rem;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.leaderboard-row span:not(:nth-child(2)) {
+.leaderboard-row > *:not(:nth-child(2)) {
   text-align: center;
 }
 

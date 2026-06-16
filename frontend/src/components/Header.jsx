@@ -67,7 +67,7 @@ const Header = ({
                 <UserCircle size={18} weight="bold" aria-hidden="true" />
                 <span>{playerName}</span>
               </span>
-              <button className="header-btn header-btn--ghost" onClick={onLogout} aria-label="Sign out">
+              <button className="header-btn header-btn--ghost" type="button" onClick={onLogout} aria-label="Sign out">
                 <SignOut size={17} weight="bold" aria-hidden="true" />
                 <span>Sign out</span>
               </button>
@@ -76,6 +76,7 @@ const Header = ({
             <button
               id="header-login-btn"
               className="header-btn header-btn--primary"
+              type="button"
               onClick={onAuthClick}
               aria-label="Sign in"
             >

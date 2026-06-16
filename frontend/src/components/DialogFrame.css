@@ -1,0 +1,17 @@
+.app-dialog-frame {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  color: inherit;
+}
+
+.app-dialog-frame::backdrop {
+  background: transparent;
+}
+
+.app-dialog-frame:focus {
+  outline: none;
+}
