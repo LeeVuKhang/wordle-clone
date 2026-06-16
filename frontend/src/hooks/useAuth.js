@@ -1,20 +1,10 @@
 /**
- * useAuth — Authentication state + Google OAuth flow
+ * useAuth - Authentication state + Google OAuth flow
  *
  * WBS Tasks 8.2, 7.7 (merge trigger)
- *
- * State:
- *   user      — authenticated user object or null
- *   isLoading — initial auth check in progress
- *   error     — last auth error message
- *
- * Exposes:
- *   login(code, redirectUri) — exchange Google OAuth code
- *   logout()
- *   triggerMerge()          — send guest_uuid to merge endpoint (Task 7.7)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { authApi, setAuthenticatedSession } from '../services/api.js';
 import { getGuestUuid, clearGuestUuid } from '../services/guestStorage.js';
 
@@ -23,7 +13,6 @@ export function useAuth() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ── Bootstrap: check if already authenticated ────────────────────────────
   useEffect(() => {
     let isActive = true;
 
@@ -47,15 +36,28 @@ export function useAuth() {
     };
   }, []);
 
-  // ── Google OAuth login ────────────────────────────────────────────────────
+  const triggerMerge = useCallback(async () => {
+    const guestUuid = getGuestUuid();
+    if (!guestUuid) return null;
+
+    try {
+      const res = await authApi.mergeGuest(guestUuid);
+      clearGuestUuid();
+      return res.data;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const login = useCallback(async (code, redirectUri) => {
     setError(null);
     setIsLoading(true);
+
     try {
       const res = await authApi.googleLogin(code, redirectUri);
       setAuthenticatedSession(true);
       setUser(res.data.user);
-      // Trigger guest data merge immediately after login (Task 7.7)
+
       const mergeResult = await triggerMerge();
       if (mergeResult?.stats) {
         setUser((prev) => prev ? {
@@ -64,6 +66,7 @@ export function useAuth() {
           maxStreak: mergeResult.stats.maxStreak,
         } : prev);
       }
+
       return { ...res.data, mergeResult };
     } catch (err) {
       const msg = err.response?.data?.error?.message || 'Login failed';
@@ -72,23 +75,8 @@ export function useAuth() {
     } finally {
       setIsLoading(false);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [triggerMerge]);
 
-  // ── Guest merge (Task 7.7) ────────────────────────────────────────────────
-  const triggerMerge = useCallback(async () => {
-    const guestUuid = getGuestUuid();
-    if (!guestUuid) return null;
-    try {
-      const res = await authApi.mergeGuest(guestUuid);
-      clearGuestUuid();             // Clear localStorage only on confirmed merge
-      return res.data;
-    } catch {
-      // Merge failure is non-fatal — guest data stays in localStorage
-      return null;
-    }
-  }, []);
-
-  // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
       await authApi.logout();

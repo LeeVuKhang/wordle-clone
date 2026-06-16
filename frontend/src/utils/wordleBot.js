@@ -106,7 +106,10 @@ function normalizeFrequencyConfig(config = {}) {
     commonWords: new Set(normalizeWordList(merged.commonWords || [])),
     rareLetters: new Set(
       Array.isArray(merged.rareLetters)
-        ? merged.rareLetters.map((letter) => String(letter || '').toUpperCase()).filter(Boolean)
+        ? merged.rareLetters.flatMap((letter) => {
+          const normalized = String(letter || '').toUpperCase();
+          return normalized ? [normalized] : [];
+        })
         : DEFAULT_FREQUENCY_CONFIG.rareLetters,
     ),
   };
@@ -511,6 +514,7 @@ export function solveWithGreedyBot(targetWord, options = {}) {
     const ranking = remainingBefore === 1
       ? []
       : rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache);
+    const rankingByWord = new Map(ranking.map((entry) => [entry.word, entry]));
     const guess = remainingBefore === 1
       ? remainingCandidates[0]
       : bestUnusedGuess(
@@ -518,7 +522,7 @@ export function solveWithGreedyBot(targetWord, options = {}) {
         usedGuesses,
         normalizedTarget,
       );
-    const metrics = ranking.find((entry) => entry.word === guess) ||
+    const metrics = rankingByWord.get(guess) ||
       { word: guess, ...computeGuessMetrics(guess, remainingCandidates, frequencyConfig) };
     const { observedPattern, candidates, rawRemainingAfter } = nextCandidatePool(
       guess,
@@ -633,11 +637,15 @@ export function analyzeCompletedDailyGame(game, options = {}) {
   for (const guess of normalizedGame.guesses) {
     const remainingBefore = remainingCandidates.length;
     const ranking = rankWords(remainingCandidates, rankingWords, frequencyConfig, rankCache);
+    const rankingByWord = new Map(
+      ranking.map((entry, index) => [entry.word, { entry, index }]),
+    );
     const botChoice = ranking[0] || null;
-    const playerRankIndex = ranking.findIndex((entry) => entry.word === guess);
+    const playerRanking = rankingByWord.get(guess);
+    const playerRankIndex = playerRanking ? playerRanking.index : -1;
     const playerRank = playerRankIndex >= 0 ? playerRankIndex + 1 : null;
     const playerMetrics = playerRank
-      ? ranking[playerRankIndex]
+      ? playerRanking.entry
       : { word: guess, ...computeGuessMetrics(guess, remainingCandidates, frequencyConfig) };
     const { observedPattern, candidates, rawRemainingAfter } = nextCandidatePool(
       guess,

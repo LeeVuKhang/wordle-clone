@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { ChartBar } from '@phosphor-icons/react';
 import { useWordleBotAnalysis } from '../hooks/useWordleBotAnalysis.js';
 import './WordleBotPanel.css';
@@ -94,10 +94,10 @@ function PlayerRow({ row }) {
   );
 }
 
-const WordleBotPanel = ({
+const WordleBotPanelBody = ({
   game,
-  description,
-  unavailableMessage = 'Complete a game to unlock Wordle Bot analysis.',
+  hasGame,
+  panelDescription,
   loadingMessage = 'Analyzing the completed game...',
   errorMessage = 'Unable to analyze this completed game.',
   className = '',
@@ -111,22 +111,11 @@ const WordleBotPanel = ({
     analysis,
     error,
     analyze,
-    reset,
   } = useWordleBotAnalysis();
-  const identity = useMemo(() => gameIdentity(game), [game]);
-  const hasGame = Boolean(game);
   const isLoading = status === 'loading';
   const isReady = status === 'ready' && analysis;
   const isError = status === 'error';
   const shouldShowBody = isExpanded || isLoading;
-  const panelDescription = hasGame
-    ? description || `Analyze your ${formatGameDate(game)} guesses against the full word list.`
-    : unavailableMessage;
-
-  useEffect(() => {
-    setIsExpanded(false);
-    reset();
-  }, [identity, reset]);
 
   const handleToggle = () => {
     if (!hasGame || isLoading) return;
@@ -213,6 +202,35 @@ const WordleBotPanel = ({
         </div>
       )}
     </section>
+  );
+};
+
+const WordleBotPanel = ({
+  game,
+  description,
+  unavailableMessage = 'Complete a game to unlock Wordle Bot analysis.',
+  loadingMessage = 'Analyzing the completed game...',
+  errorMessage = 'Unable to analyze this completed game.',
+  className = '',
+  variant = 'default',
+}) => {
+  const identity = useMemo(() => gameIdentity(game), [game]);
+  const hasGame = Boolean(game);
+  const panelDescription = hasGame
+    ? description || `Analyze your ${formatGameDate(game)} guesses against the full word list.`
+    : unavailableMessage;
+
+  return (
+    <WordleBotPanelBody
+      key={identity || 'empty'}
+      game={game}
+      hasGame={hasGame}
+      panelDescription={panelDescription}
+      loadingMessage={loadingMessage}
+      errorMessage={errorMessage}
+      className={className}
+      variant={variant}
+    />
   );
 };
 

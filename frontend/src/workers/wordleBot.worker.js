@@ -5,8 +5,10 @@ import { analyzeCompletedDailyGame } from '../utils/wordleBot.js';
 
 const answerWords = PRACTICE_WORDS_TEXT
   .split(/\r?\n/)
-  .map((word) => word.trim())
-  .filter(Boolean);
+  .flatMap((word) => {
+    const trimmed = word.trim();
+    return trimmed ? [trimmed] : [];
+  });
 const rankingWords = VALID_GUESSES;
 const rankCache = new Map();
 

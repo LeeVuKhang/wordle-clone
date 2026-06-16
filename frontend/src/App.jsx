@@ -91,7 +91,7 @@ function App() {
   const [mergeResult, setMergeResult] = useState(null);
   const [modalDismissed, setModalDismissed] = useState(false);
   const [completionStatsSnapshot, setCompletionStatsSnapshot] = useState(null);
-  const [shouldRefreshMergedState, setShouldRefreshMergedState] = useState(false);
+  const shouldRefreshMergedStateRef = useRef(false);
   const latestStatsRef = useRef(null);
   const previousDailyStatusRef = useRef('PLAYING');
   const previousDailyLoadingRef = useRef(true);
@@ -159,27 +159,27 @@ function App() {
       if (data?.mergeResult) {
         setMergeResult(data.mergeResult);
         setShowAuthModal(true);   // show merge success modal
-        setShouldRefreshMergedState(true);
+        shouldRefreshMergedStateRef.current = true;
       }
     }).catch(() => {
       // auth.error is set inside the hook
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [auth.login]);
 
   useEffect(() => {
-    if (!shouldRefreshMergedState || !auth.user) return;
+    if (!shouldRefreshMergedStateRef.current || !auth.user) return;
 
+    shouldRefreshMergedStateRef.current = false;
     daily.reloadGame();
     refetchStats();
-    setShouldRefreshMergedState(false);
-  }, [shouldRefreshMergedState, auth.user, daily.reloadGame, refetchStats]);
+  }, [auth.user, daily.reloadGame, refetchStats]);
 
   // ── Start practice session when switching to practice mode ────────────
   useEffect(() => {
     if (mode === 'practice' && !practice.practiceId) {
       practice.startSession();
     }
-  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, practice.practiceId, practice.startSession]);
 
   // ── Physical keyboard ─────────────────────────────────────────────────
   useEffect(() => {
@@ -238,10 +238,22 @@ function App() {
 
     const timer = window.setTimeout(() => {
       setShowResultsPanel(true);
+      if (auth.user) {
+        refetchStats();
+      }
     }, 2000);
 
     return () => window.clearTimeout(timer);
-  }, [daily.attempts, daily.gameStatus, daily.isLoading, daily.showToast, mode, showResultsPanel]);
+  }, [
+    auth.user,
+    daily.attempts,
+    daily.gameStatus,
+    daily.isLoading,
+    daily.showToast,
+    mode,
+    refetchStats,
+    showResultsPanel,
+  ]);
 
   useEffect(() => {
     if (mode !== 'daily' || !auth.user || !isGameOver) return undefined;
@@ -252,12 +264,6 @@ function App() {
 
     return () => window.clearTimeout(timer);
   }, [mode, auth.user, isGameOver, daily.gameStatus, daily.attempts, refetchStats]);
-
-  useEffect(() => {
-    if (showResultsPanel && auth.user) {
-      refetchStats();
-    }
-  }, [showResultsPanel, auth.user, refetchStats]);
 
   const gameStatusText = game.gameStatus === 'PLAYING'
     ? `${game.attempts}/6 attempts`
@@ -279,6 +285,13 @@ function App() {
     setShowHowToPlayModal(false);
   }, []);
 
+  const handleOpenStats = useCallback(() => {
+    setShowStatsModal(true);
+    if (auth.user) {
+      refetchStats();
+    }
+  }, [auth.user, refetchStats]);
+
   // ── Loading state ─────────────────────────────────────────────────────
   if (auth.isLoading || (mode === 'daily' && daily.isLoading)) {
     return (
@@ -299,13 +312,13 @@ function App() {
           user={auth.user}
           onAuthClick={() => setShowAuthModal(true)}
           onLogout={auth.logout}
-          onStatsClick={() => setShowStatsModal(true)}
+          onStatsClick={handleOpenStats}
           onLeaderboardClick={() => setShowLeaderboardModal(true)}
           onHelpClick={() => setShowHowToPlayModal(true)}
         />
         <div className="app-error">
           <p>{daily.error}</p>
-          <button onClick={() => window.location.reload()}>Retry</button>
+          <button type="button" onClick={() => window.location.reload()}>Retry</button>
         </div>
         {showHowToPlayModal && (
           <Suspense fallback={null}>
@@ -324,7 +337,7 @@ function App() {
         user={auth.user}
         onAuthClick={() => setShowAuthModal(true)}
         onLogout={auth.logout}
-        onStatsClick={() => setShowStatsModal(true)}
+          onStatsClick={handleOpenStats}
         onLeaderboardClick={() => setShowLeaderboardModal(true)}
         onHelpClick={() => setShowHowToPlayModal(true)}
       />

@@ -36,8 +36,10 @@ async function fallbackAnalyze(game) {
 
   const answerWords = practiceWordsModule.default
     .split(/\r?\n/)
-    .map((word) => word.trim())
-    .filter(Boolean);
+    .flatMap((word) => {
+      const trimmed = word.trim();
+      return trimmed ? [trimmed] : [];
+    });
   const analysis = wordleBotModule.analyzeCompletedDailyGame(game, {
     answerWords,
     rankingWords: validGuessesModule.default,
@@ -56,7 +58,10 @@ export function useWordleBotAnalysis() {
   const [state, setState] = useState(EMPTY_STATE);
   const workerRef = useRef(null);
   const requestIdRef = useRef(0);
-  const cacheRef = useRef(new Map());
+  const cacheRef = useRef(null);
+  if (!cacheRef.current) {
+    cacheRef.current = new Map();
+  }
 
   useEffect(() => () => {
     workerRef.current?.terminate();

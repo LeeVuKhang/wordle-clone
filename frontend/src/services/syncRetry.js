@@ -35,25 +35,26 @@ async function flushQueue() {
   isFlushing = true;
   console.debug('[SyncRetry] Flushing', queue.length, 'queued syncs');
 
-  const remaining = [];
-  for (const item of queue) {
+  const results = await Promise.all(queue.map(async (item) => {
     try {
       await gameApi.sync(item.dto);
       console.debug('[SyncRetry] Successfully synced game', item.dto.id);
+      return null;
     } catch (err) {
-      item.retries++;
-      if (item.retries < MAX_RETRIES) {
+      const retries = item.retries + 1;
+      if (retries < MAX_RETRIES) {
         // Exponential backoff
-        const delay = BACKOFF_BASE_MS * Math.pow(2, item.retries - 1);
+        const delay = BACKOFF_BASE_MS * Math.pow(2, retries - 1);
         await new Promise((r) => setTimeout(r, delay));
-        remaining.push(item);
-      } else {
-        console.error('[SyncRetry] Max retries exceeded for game', item.dto.id, err);
+        return { ...item, retries };
       }
-    }
-  }
 
-  queue = remaining;
+      console.error('[SyncRetry] Max retries exceeded for game', item.dto.id, err);
+      return null;
+    }
+  }));
+
+  queue = results.filter(Boolean);
   isFlushing = false;
 }
 

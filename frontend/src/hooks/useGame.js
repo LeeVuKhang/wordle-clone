@@ -1,10 +1,10 @@
 /**
- * useGame — Daily game state machine
+ * useGame - Daily game state machine
  *
  * WBS Tasks 8.3, 8.5, 8.9
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { gameApi } from '../services/api.js';
 import { compareWord, isValidGuess, deriveKeyboardStatus } from '../utils/compareWord.js';
 import { GUESS_REVEAL_DURATION_MS } from '../utils/revealTiming.js';
@@ -14,20 +14,102 @@ import { enqueueSyncRetry } from '../services/syncRetry.js';
 const MAX_ATTEMPTS = 6;
 const SYNC_DEBOUNCE_MS = 500;
 
+function createInitialGameState(identityKey, isLoading = true) {
+  return {
+    identityKey,
+    gameId: null,
+    targetWord: '',
+    guessResults: [],
+    submittedWords: [],
+    currentGuess: '',
+    keyboardStatus: {},
+    gameStatus: 'PLAYING',
+    attempts: 0,
+    isLoading,
+    isRevealing: false,
+    loadedIdentityKey: null,
+    error: null,
+  };
+}
+
+function gameReducer(state, action) {
+  switch (action.type) {
+    case 'identity_changed':
+      return createInitialGameState(action.identityKey, action.enabled);
+    case 'load_started':
+      return {
+        ...state,
+        isLoading: true,
+        isRevealing: false,
+        error: null,
+      };
+    case 'load_succeeded':
+      return {
+        ...state,
+        gameId: action.gameId,
+        targetWord: action.targetWord,
+        guessResults: action.guessResults,
+        submittedWords: action.submittedWords,
+        currentGuess: '',
+        keyboardStatus: action.keyboardStatus,
+        gameStatus: action.gameStatus,
+        attempts: action.attempts,
+        isLoading: false,
+        isRevealing: false,
+        loadedIdentityKey: action.identityKey,
+        error: null,
+      };
+    case 'load_failed':
+      return {
+        ...state,
+        isLoading: false,
+        isRevealing: false,
+        loadedIdentityKey: action.identityKey,
+        error: action.error,
+      };
+    case 'append_letter':
+      return {
+        ...state,
+        currentGuess: `${state.currentGuess}${action.letter.toUpperCase()}`,
+      };
+    case 'delete_letter':
+      return {
+        ...state,
+        currentGuess: state.currentGuess.slice(0, -1),
+      };
+    case 'guess_submitted':
+      return {
+        ...state,
+        submittedWords: action.submittedWords,
+        guessResults: action.guessResults,
+        keyboardStatus: action.keyboardStatus,
+        attempts: action.attempts,
+        currentGuess: '',
+        gameStatus: action.gameStatus,
+        isRevealing: true,
+      };
+    case 'reveal_finished':
+      return {
+        ...state,
+        isRevealing: false,
+      };
+    default:
+      return state;
+  }
+}
+
 export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
-  const [gameId, setGameId] = useState(null);
-  const [targetWord, setTargetWord] = useState('');
-  const [guessResults, setGuessResults] = useState([]);
-  const [submittedWords, setSubmittedWords] = useState([]);
-  const [currentGuess, setCurrentGuess] = useState('');
-  const [keyboardStatus, setKeyboardStatus] = useState({});
-  const [gameStatus, setGameStatus] = useState('PLAYING');
-  const [attempts, setAttempts] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRevealing, setIsRevealing] = useState(false);
-  const [loadedIdentityKey, setLoadedIdentityKey] = useState(null);
-  const [error, setError] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [state, dispatch] = useReducer(
+    gameReducer,
+    { enabled, identityKey },
+    ({ enabled: initialEnabled, identityKey: initialIdentityKey }) => (
+      createInitialGameState(initialIdentityKey, initialEnabled)
+    ),
+  );
+
+  if (state.identityKey !== identityKey) {
+    dispatch({ type: 'identity_changed', identityKey, enabled });
+  }
 
   const syncTimer = useRef(null);
   const gameIdRef = useRef(null);
@@ -35,6 +117,8 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
   const toastIdRef = useRef(0);
   const toastTimerRef = useRef(null);
   const revealTimerRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const [toast, setToast] = useState(null);
 
   const showToast = useCallback((message, type = 'info') => {
     const id = toastIdRef.current + 1;
@@ -46,58 +130,35 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     }, 3000);
   }, []);
 
-  const isProcessingRef = useRef(false);
+  const cancelActiveLoad = useCallback(() => {
+    loadRequestId.current += 1;
+  }, []);
 
   useEffect(() => () => {
+    window.clearTimeout(syncTimer.current);
     window.clearTimeout(toastTimerRef.current);
     window.clearTimeout(revealTimerRef.current);
   }, []);
 
-  const resetGameState = useCallback(() => {
-    setGameId(null);
-    setTargetWord('');
-    setGuessResults([]);
-    setSubmittedWords([]);
-    setCurrentGuess('');
-    setKeyboardStatus({});
-    setGameStatus('PLAYING');
-    setAttempts(0);
-    setIsRevealing(false);
-    setLoadedIdentityKey(null);
-    setError(null);
-    gameIdRef.current = null;
-    isProcessingRef.current = false;
-    window.clearTimeout(revealTimerRef.current);
-  }, []);
-
-  // Load daily game (Task 8.3)
   const loadGame = useCallback(async () => {
     if (!enabled) return null;
 
     const requestId = ++loadRequestId.current;
     window.clearTimeout(revealTimerRef.current);
+    gameIdRef.current = null;
     isProcessingRef.current = false;
-    setIsRevealing(false);
-    setIsLoading(true);
-    setError(null);
+    dispatch({ type: 'load_started' });
+
     try {
       const res = await gameApi.getToday();
       if (requestId !== loadRequestId.current) return null;
 
       const data = res.data;
       const word = atob(data.word);
-      setTargetWord(word);
-      setGameId(data.id);
-      gameIdRef.current = data.id;
-      setGameStatus(data.status);
-      setAttempts(data.attempts);
-      setLoadedIdentityKey(identityKey);
-      setCurrentGuess('');
-
-      // Reconcile server state with offline fallback (R9)
       const offline = getOfflineState();
       const serverGuesses = data.guesses || [];
       let reconciledWords = serverGuesses;
+
       if (
         offline &&
         offline.gameId === data.id &&
@@ -108,43 +169,50 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
         showToast('Progress restored from offline storage', 'info');
       }
 
-      const results = reconciledWords.map((w) => compareWord(w, word));
-      setSubmittedWords(reconciledWords);
-      setGuessResults(results);
-      setKeyboardStatus(deriveKeyboardStatus(results));
+      const guessResults = reconciledWords.map((guess) => compareWord(guess, word));
+
+      gameIdRef.current = data.id;
+      dispatch({
+        type: 'load_succeeded',
+        identityKey,
+        gameId: data.id,
+        targetWord: word,
+        gameStatus: data.status,
+        attempts: data.attempts,
+        submittedWords: reconciledWords,
+        guessResults,
+        keyboardStatus: deriveKeyboardStatus(guessResults),
+      });
 
       if (serverGuesses.length >= (offline?.guesses?.length ?? 0)) {
         clearOfflineState();
       }
     } catch (err) {
       if (requestId !== loadRequestId.current) return null;
-      setLoadedIdentityKey(identityKey);
-      setError(err.response?.data?.error?.message || "Failed to load today's game");
-    } finally {
-      if (requestId === loadRequestId.current) setIsLoading(false);
+      dispatch({
+        type: 'load_failed',
+        identityKey,
+        error: err.response?.data?.error?.message || "Failed to load today's game",
+      });
     }
+
     return null;
   }, [enabled, identityKey, showToast]);
 
   useEffect(() => {
     if (!enabled) return undefined;
 
-    resetGameState();
-    loadGame();
+    void loadGame();
+    return cancelActiveLoad;
+  }, [cancelActiveLoad, enabled, identityKey, loadGame]);
 
-    return () => {
-      loadRequestId.current += 1;
-    };
-  }, [enabled, identityKey, loadGame, resetGameState]);
-
-  // Sync to server (Task 8.5)
   const syncToServer = useCallback((id, words, status) => {
     const dto = { id, guesses: words, status };
     const today = new Date().toISOString().slice(0, 10);
     saveOfflineState(id, words, status, today);
 
-    clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(async () => {
+    window.clearTimeout(syncTimer.current);
+    syncTimer.current = window.setTimeout(async () => {
       try {
         await gameApi.sync(dto);
         if (status !== 'PLAYING') clearOfflineState();
@@ -154,23 +222,43 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     }, SYNC_DEBOUNCE_MS);
   }, []);
 
+  const {
+    gameId,
+    targetWord,
+    guessResults,
+    submittedWords,
+    currentGuess,
+    keyboardStatus,
+    gameStatus,
+    attempts,
+    isLoading,
+    isRevealing,
+    loadedIdentityKey,
+    error,
+  } = state;
+
   const handleLetter = useCallback((letter) => {
     if (gameStatus !== 'PLAYING' || isProcessingRef.current || currentGuess.length >= 5) return;
-    setCurrentGuess((prev) => prev + letter.toUpperCase());
-  }, [gameStatus, currentGuess]);
+    dispatch({ type: 'append_letter', letter });
+  }, [currentGuess, gameStatus]);
 
   const handleDelete = useCallback(() => {
     if (gameStatus !== 'PLAYING' || isProcessingRef.current) return;
-    setCurrentGuess((prev) => prev.slice(0, -1));
+    dispatch({ type: 'delete_letter' });
   }, [gameStatus]);
 
   const handleEnter = useCallback(() => {
     if (gameStatus !== 'PLAYING' || isProcessingRef.current) return;
-    if (currentGuess.length < 5) { showToast('Not enough letters', 'warning'); return; }
-    if (!isValidGuess(currentGuess)) { showToast('Not in word list', 'warning'); return; }
+    if (currentGuess.length < 5) {
+      showToast('Not enough letters', 'warning');
+      return;
+    }
+    if (!isValidGuess(currentGuess)) {
+      showToast('Not in word list', 'warning');
+      return;
+    }
 
     isProcessingRef.current = true;
-    setIsRevealing(true);
 
     const result = compareWord(currentGuess, targetWord);
     const newWords = [...submittedWords, currentGuess];
@@ -180,33 +268,54 @@ export function useGame({ enabled = true, identityKey = 'guest' } = {}) {
     const newAttempts = newWords.length;
     const newStatus = isWon ? 'WON' : newAttempts >= MAX_ATTEMPTS ? 'LOST' : 'PLAYING';
 
-    setSubmittedWords(newWords);
-    setGuessResults(newResults);
-    setKeyboardStatus(newKeyboard);
-    setAttempts(newAttempts);
-    setCurrentGuess('');
-    setGameStatus(newStatus);
+    dispatch({
+      type: 'guess_submitted',
+      submittedWords: newWords,
+      guessResults: newResults,
+      keyboardStatus: newKeyboard,
+      attempts: newAttempts,
+      gameStatus: newStatus,
+    });
     syncToServer(gameIdRef.current, newWords, newStatus);
 
     window.clearTimeout(revealTimerRef.current);
     revealTimerRef.current = window.setTimeout(() => {
       isProcessingRef.current = false;
-      setIsRevealing(false);
+      dispatch({ type: 'reveal_finished' });
     }, GUESS_REVEAL_DURATION_MS);
-  }, [gameStatus, currentGuess, targetWord, submittedWords, guessResults, showToast, syncToServer]);
+  }, [
+    currentGuess,
+    gameStatus,
+    guessResults,
+    showToast,
+    submittedWords,
+    syncToServer,
+    targetWord,
+  ]);
 
   const handleKeyPress = useCallback((key) => {
     if (key === 'ENTER') handleEnter();
     else if (key === 'DELETE' || key === 'BACKSPACE') handleDelete();
     else if (/^[A-Z]$/.test(key)) handleLetter(key);
-  }, [handleEnter, handleDelete, handleLetter]);
+  }, [handleDelete, handleEnter, handleLetter]);
 
-  const isGameLoading = isLoading || (enabled && loadedIdentityKey !== identityKey);
+  const isGameLoading = enabled && (isLoading || loadedIdentityKey !== identityKey);
 
   return {
-    gameId, targetWord, guessResults, submittedWords,
-    currentGuess, keyboardStatus, gameStatus, attempts,
-    isLoading: isGameLoading, isRevealing, error, toast, showToast, handleKeyPress,
+    gameId,
+    targetWord,
+    guessResults,
+    submittedWords,
+    currentGuess,
+    keyboardStatus,
+    gameStatus,
+    attempts,
+    isLoading: isGameLoading,
+    isRevealing,
+    error,
+    toast,
+    showToast,
+    handleKeyPress,
     reloadGame: loadGame,
   };
 }
